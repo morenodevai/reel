@@ -1,0 +1,50 @@
+name: reel
+description: "Premium media organizer - identify, rename, and organize video files."
+publish_to: 'none'
+version: 3.0.0+1
+
+environment:
+  sdk: ^3.10.7
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State management
+  flutter_riverpod: ^3.0.0
+
+  # Rust FFI bridge
+  flutter_rust_bridge: ^2.11.1
+  rust_lib_reel:
+    path: rust_builder
+
+  # Video playback (add now, integrate later)
+  media_kit: ^1.2.6
+  media_kit_video: ^2.0.1
+  media_kit_libs_video: ^1.0.7
+
+  # File system / platform
+  path_provider: ^2.1.0
+  file_picker: ^8.0.0
+
+  # Window management (desktop)
+  window_manager: ^0.4.0
+
+  # Image loading with cache
+  cached_network_image: ^3.4.0
+
+  # Native desktop drag-and-drop
+  desktop_drop: ^0.5.0
+
+  # Icons
+  cupertino_icons: ^1.0.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  build_runner: ^2.4.0
+  flutter_rust_bridge: ^2.11.1
+
+flutter:
+  uses-material-design: true
