@@ -122,10 +122,7 @@ pub fn search_and_download(
         .and_then(|p| p.file_name())
         .and_then(|n| n.to_str())
         .unwrap_or("Movies");
-    let media_type = match format {
-        "Shows" | "Anime" | "Animated Shows" => "tv",
-        _ => "movie",
-    };
+    let media_type = crate::shared::video::format_to_media_type(format);
 
     let videos = find_all_videos_in_dir(title_dir);
     if videos.is_empty() {

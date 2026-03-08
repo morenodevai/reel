@@ -44,10 +44,7 @@ fn scan_format_dir(format_path: &Path, name: &str, tmdb_api_key: &str) -> Format
     let mut genre_count = 0u32;
     let mut media_count = 0u32;
     let mut poster_samples = Vec::new();
-    let media_type = match name {
-        "Shows" | "Anime" | "Animated Shows" => "tv",
-        _ => "movie",
-    };
+    let media_type = crate::shared::video::format_to_media_type(name);
 
     if format_path.exists() {
         if let Ok(entries) = fs::read_dir(format_path) {
@@ -239,10 +236,7 @@ pub fn get_media_details(media_path: &str) -> Result<MediaDetail, String> {
         .unwrap_or("Movies")
         .to_string();
 
-    let media_type_str = match format.as_str() {
-        "Shows" | "Anime" | "Animated Shows" => "tv",
-        _ => "movie",
-    };
+    let media_type_str = crate::shared::video::format_to_media_type(&format);
 
     let has_season_dirs = fs::read_dir(dir)
         .ok()
@@ -464,10 +458,7 @@ fn media_info_from_dir(title_dir: &Path, genre: &str, tmdb_api_key: &str) -> Med
         .unwrap_or("Movies")
         .to_string();
 
-    let media_type = match format.as_str() {
-        "Shows" | "Anime" | "Animated Shows" => "tv",
-        _ => "movie",
-    };
+    let media_type = crate::shared::video::format_to_media_type(&format);
 
     let poster_url = if let Some(id) = tmdb_id {
         if !tmdb_api_key.is_empty() {
@@ -636,7 +627,7 @@ fn has_subtitle_file(dir: &Path, video_stem: &str) -> bool {
                     .extension()
                     .and_then(|e| e.to_str())
                     .unwrap_or("");
-                if matches!(ext, "srt" | "ass" | "ssa" | "sub" | "vtt") {
+                if crate::shared::video::SUBTITLE_EXTENSIONS.contains(&ext) {
                     return true;
                 }
             }

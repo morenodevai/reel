@@ -31,6 +31,15 @@ pub fn is_video_file(path: &Path) -> bool {
     true
 }
 
+/// Map a library format name (e.g. "Shows", "Movies") to a media type string.
+/// Single source of truth — used by scanner, subtitles, and anywhere else.
+pub fn format_to_media_type(format_name: &str) -> &'static str {
+    match format_name {
+        "Shows" | "Anime" | "Animated Shows" => "tv",
+        _ => "movie",
+    }
+}
+
 pub fn is_subtitle_file(path: &Path) -> bool {
     path.extension()
         .and_then(|e| e.to_str())

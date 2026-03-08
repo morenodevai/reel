@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:reel/src/rust/transaction.dart';
 import 'package:reel/src/rust/api/history_api.dart' as history_api;
+import 'package:reel/src/rust/api/review_api.dart' as review_api;
 import 'package:reel/providers/toast_provider.dart';
 import 'package:reel/providers/library_provider.dart';
 import 'package:reel/components/empty_state.dart';
@@ -75,6 +76,33 @@ class _HistoryPageWidgetState extends ConsumerState<HistoryPageWidget> {
     }
   }
 
+  Future<void> _handleApproveAll() async {
+    final toast = ref.read(toastProvider.notifier);
+    try {
+      final ids = _items.map((t) => t.id).toList();
+      await review_api.lockTransactions(ids: ids);
+      setState(() => _items.clear());
+      toast.show('All items approved');
+    } catch (e) {
+      toast.show('Approve failed: $e', type: ToastType.error);
+    }
+  }
+
+  Future<void> _handleClearAll() async {
+    final toast = ref.read(toastProvider.notifier);
+    try {
+      final result = await review_api.clearAllPending();
+      setState(() => _items.clear());
+      ref.read(libraryProvider.notifier).refresh();
+      final msg = result.failed > 0
+          ? 'Cleared ${result.succeeded} items (${result.failed} failed to undo)'
+          : 'Cleared ${result.succeeded} items -- files moved back';
+      toast.show(msg, type: result.failed > 0 ? ToastType.error : ToastType.success);
+    } catch (e) {
+      toast.show('Clear failed: $e', type: ToastType.error);
+    }
+  }
+
   Future<void> _handleUndo(String id) async {
     setState(() => _undoingId = id);
     final toast = ref.read(toastProvider.notifier);
@@ -108,31 +136,69 @@ class _HistoryPageWidgetState extends ConsumerState<HistoryPageWidget> {
       );
     }
 
-    return ListView.builder(
-      controller: _scrollController,
-      padding: const EdgeInsets.all(16),
-      itemCount: _items.length + (_hasMore ? 1 : 0),
-      itemBuilder: (context, index) {
-        if (index == _items.length) {
-          return const Padding(
-            padding: EdgeInsets.all(24),
-            child: Center(
-              child: SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(strokeWidth: 2),
+    return Column(
+      children: [
+        // Top bar with bulk actions
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '${_items.length} item${_items.length != 1 ? 's' : ''}',
+                style: const TextStyle(fontSize: 12, color: AppColors.textTertiary),
               ),
-            ),
-          );
-        }
+              Row(
+                children: [
+                  _BulkButton(
+                    icon: Icons.delete_outline,
+                    label: 'Clear All',
+                    color: AppColors.error,
+                    onTap: _handleClearAll,
+                  ),
+                  const SizedBox(width: 8),
+                  _BulkButton(
+                    icon: Icons.check_circle_outline,
+                    label: 'Approve All',
+                    color: AppColors.success,
+                    onTap: _handleApproveAll,
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
 
-        final txn = _items[index];
-        return _HistoryItemRow(
-          transaction: txn,
-          undoing: _undoingId == txn.id,
-          onUndo: () => _handleUndo(txn.id),
-        );
-      },
+        // List
+        Expanded(
+          child: ListView.builder(
+            controller: _scrollController,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            itemCount: _items.length + (_hasMore ? 1 : 0),
+            itemBuilder: (context, index) {
+              if (index == _items.length) {
+                return const Padding(
+                  padding: EdgeInsets.all(24),
+                  child: Center(
+                    child: SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  ),
+                );
+              }
+
+              final txn = _items[index];
+              return _HistoryItemRow(
+                transaction: txn,
+                undoing: _undoingId == txn.id,
+                onUndo: () => _handleUndo(txn.id),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 }
@@ -263,6 +329,42 @@ class _HistoryItemRow extends StatelessWidget {
     } catch (_) {
       return timestamp;
     }
+  }
+}
+
+class _BulkButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+  const _BulkButton({required this.icon, required this.label, required this.color, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 14, color: color),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: color),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 
