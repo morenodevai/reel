@@ -125,7 +125,7 @@ class FormatsPageWidget extends ConsumerWidget {
         // Parse progress events for user feedback
         try {
           final data = Map<String, dynamic>.from(
-            (event as String).isNotEmpty ? _parseJson(event) : {},
+            event.isNotEmpty ? _parseJson(event) : {},
           );
           final type = data['type'] as String?;
           if (type == 'done') {
@@ -140,6 +140,15 @@ class FormatsPageWidget extends ConsumerWidget {
               toast.show('Organized $succeeded, $failed failed', type: ToastType.error);
             }
             ref.read(libraryProvider.notifier).refresh();
+          } else if (type == 'error') {
+            final msg = data['message'] as String? ?? 'Unknown error';
+            toast.show('Processing error: $msg', type: ToastType.error);
+          } else if (type == 'progress') {
+            final current = data['current'] as int? ?? 0;
+            final total = data['total'] as int? ?? 0;
+            if (total > 1) {
+              toast.show('Processing file $current of $total...', type: ToastType.info);
+            }
           }
         } catch (e) {
           debugPrint('[formats] Failed to parse progress event: $e');

@@ -50,8 +50,8 @@ class _PlayerPageWidgetState extends ConsumerState<PlayerPageWidget> {
     super.dispose();
   }
 
-  void _handleKey(KeyEvent event) {
-    if (event is! KeyDownEvent) return;
+  bool _handleKey(KeyEvent event) {
+    if (event is! KeyDownEvent) return false;
     final notifier = ref.read(playbackProvider.notifier);
     final s = ref.read(playbackProvider);
     final key = event.logicalKey;
@@ -81,8 +81,11 @@ class _PlayerPageWidgetState extends ConsumerState<PlayerPageWidget> {
       notifier.playNext();
     } else if (key == LogicalKeyboardKey.keyP && s.isTV) {
       notifier.playPrevious();
+    } else {
+      return false;
     }
     notifier.onMouseActivity();
+    return true;
   }
 
   void _exitPlayer() {
@@ -98,8 +101,9 @@ class _PlayerPageWidgetState extends ConsumerState<PlayerPageWidget> {
       focusNode: _focusNode,
       autofocus: true,
       onKeyEvent: (node, event) {
-        _handleKey(event);
-        return KeyEventResult.handled;
+        return _handleKey(event)
+            ? KeyEventResult.handled
+            : KeyEventResult.ignored;
       },
       child: Container(
         color: Colors.black,

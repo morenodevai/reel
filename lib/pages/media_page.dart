@@ -72,12 +72,16 @@ class _MediaPageWidgetState extends ConsumerState<MediaPageWidget> {
         });
       }
     } catch (e) {
+      debugPrint('[media] Load failed: $e');
       if (mounted) {
         setState(() {
           _loading = false;
           _loadingMore = false;
           _hasMore = false;
         });
+        if (offset == 0) {
+          ref.read(toastProvider.notifier).show('Failed to load media: $e', type: ToastType.error);
+        }
       }
     }
   }

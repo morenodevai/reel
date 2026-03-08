@@ -67,7 +67,7 @@ class _MediaCardState extends State<MediaCard> {
               // Poster
               AnimatedContainer(
                 duration: const Duration(milliseconds: 150),
-                transform: Matrix4.identity()..scale(_hovered ? 1.03 : 1.0),
+                transform: _hovered ? (Matrix4.identity()..scaleByDouble(1.03, 1.03, 1.03, 1.0)) : Matrix4.identity(),
                 transformAlignment: Alignment.center,
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(8),

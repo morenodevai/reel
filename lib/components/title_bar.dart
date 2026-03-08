@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:window_manager/window_manager.dart';
@@ -30,7 +29,7 @@ class TitleBar extends ConsumerWidget {
         child: Row(
           children: [
             // Platform leading space + back button
-            SizedBox(width: Platform.isMacOS ? 78 : 8),
+            const SizedBox(width: 8),
             if (canGoBack)
               _TitleBarButton(
                 icon: Icons.chevron_left,

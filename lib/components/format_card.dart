@@ -51,7 +51,7 @@ class _FormatCardState extends State<FormatCard> {
         onTap: widget.onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
-          transform: Matrix4.identity()..scale(_hovered ? 1.02 : 1.0),
+          transform: _hovered ? (Matrix4.identity()..scaleByDouble(1.02, 1.02, 1.02, 1.0)) : Matrix4.identity(),
           transformAlignment: Alignment.center,
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(

@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 
 /// Reel app color constants.
@@ -60,7 +59,7 @@ ThemeData buildAppTheme() {
       onSurface: AppColors.textPrimary,
       error: AppColors.error,
     ),
-    fontFamily: Platform.isMacOS ? '.AppleSystemUIFont' : 'Segoe UI',
+    fontFamily: 'Segoe UI',
     appBarTheme: const AppBarTheme(
       backgroundColor: Colors.transparent,
       elevation: 0,

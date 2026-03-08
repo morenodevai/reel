@@ -34,7 +34,11 @@ class _ReviewPageWidgetState extends ConsumerState<ReviewPageWidget> {
           await review_api.getReviewItems(batchIds: widget.batchIds);
       if (mounted) setState(() { _items = data; _loading = false; });
     } catch (e) {
-      if (mounted) setState(() { _items = []; _loading = false; });
+      debugPrint('[review] Load failed: $e');
+      if (mounted) {
+        setState(() { _items = []; _loading = false; });
+        ref.read(toastProvider.notifier).show('Failed to load review items: $e', type: ToastType.error);
+      }
     }
   }
 

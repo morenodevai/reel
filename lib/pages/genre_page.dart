@@ -24,6 +24,7 @@ class GenrePageWidget extends ConsumerStatefulWidget {
 class _GenrePageWidgetState extends ConsumerState<GenrePageWidget> {
   List<GenreInfo>? _genres;
   bool _loading = true;
+  String? _error;
 
   @override
   void initState() {
@@ -32,13 +33,14 @@ class _GenrePageWidgetState extends ConsumerState<GenrePageWidget> {
   }
 
   Future<void> _load() async {
-    setState(() => _loading = true);
+    setState(() { _loading = true; _error = null; });
     try {
       final genres =
           await library_api.getFormatContents(formatPath: widget.formatPath);
       if (mounted) setState(() { _genres = genres; _loading = false; });
     } catch (e) {
-      if (mounted) setState(() { _genres = []; _loading = false; });
+      debugPrint('[genre] Load failed: $e');
+      if (mounted) setState(() { _error = '$e'; _loading = false; });
     }
   }
 
@@ -48,6 +50,16 @@ class _GenrePageWidgetState extends ConsumerState<GenrePageWidget> {
 
     if (_loading) {
       return _GenreLoadingSkeleton();
+    }
+
+    if (_error != null) {
+      return EmptyState(
+        icon: Icons.error_outline,
+        title: 'Failed to load ${widget.formatName}',
+        subtitle: _error!,
+        actionLabel: 'Retry',
+        onAction: _load,
+      );
     }
 
     if (_genres == null || _genres!.isEmpty) {
