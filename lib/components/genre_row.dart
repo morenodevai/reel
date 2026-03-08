@@ -5,7 +5,7 @@ import 'package:reel/components/dock_row.dart';
 import 'package:reel/theme/app_theme.dart';
 
 /// A horizontal row showing a genre name, count, "See All" button, and media
-/// card samples with macOS Dock-style magnification on hover.
+/// card samples with Dock-style magnification on hover.
 class GenreRow extends StatelessWidget {
   final GenreInfo genre;
   final VoidCallback onSeeAll;

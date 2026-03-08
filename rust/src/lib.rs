@@ -1,6 +1,6 @@
 mod frb_generated; /* AUTO INJECTED BY flutter_rust_bridge. This line may not be accurate, and you can change it according to your needs. */
 // reel_core -- Pure Rust library for Reel media organizer.
-// No framework dependencies (no Tauri, no Axum). Exposed to Flutter via flutter_rust_bridge.
+// Exposed to Flutter via flutter_rust_bridge.
 
 pub mod db;
 pub mod error;

@@ -754,7 +754,9 @@ fn process_single_file(
         let dst_size = fs::metadata(dest_path)
             .map(|m| m.len()).unwrap_or(0);
         if dst_size != src_size {
-            fs::remove_file(dest_path).ok();
+            if let Err(e) = fs::remove_file(dest_path) {
+                log::error!("[process] Failed to clean up bad copy {}: {}", dest_path.display(), e);
+            }
             return Err(format!("Copy verification failed - size mismatch ({} vs {})", src_size, dst_size));
         }
         fs::remove_file(&analysis.source_path)
@@ -788,7 +790,11 @@ fn process_single_file(
         let sub_path = Path::new(sub.as_str());
         if fs::rename(sub_path, &sub_dest).is_err() {
             match fs::copy(sub_path, &sub_dest) {
-                Ok(_) => { fs::remove_file(sub_path).ok(); }
+                Ok(_) => {
+                    if let Err(e) = fs::remove_file(sub_path) {
+                        log::error!("[process] Failed to remove source subtitle after copy: {}", e);
+                    }
+                }
                 Err(e) => {
                     log::error!("[process] Failed to copy subtitle {} → {}: {}", sub, sub_dest.display(), e);
                     continue;
@@ -796,14 +802,15 @@ fn process_single_file(
             }
         }
 
-        transaction::record_subtitle(
+        if let Err(e) = transaction::record_subtitle(
             &txn_id,
             Some(sub),
             sub_dest.to_str().unwrap_or(""),
             &lang,
             false,
-        )
-        .ok();
+        ) {
+            log::error!("[process] Failed to record subtitle: {}", e);
+        }
     }
 
     // 6. Download missing subs if enabled
@@ -813,7 +820,9 @@ fn process_single_file(
             match subtitles::download_subtitle(dest_path, lang, opensubs_key) {
                 Ok(sub_path) => {
                     log::info!("[process] Downloaded subtitle: {}", sub_path);
-                    transaction::record_subtitle(&txn_id, None, &sub_path, lang, true).ok();
+                    if let Err(e) = transaction::record_subtitle(&txn_id, None, &sub_path, lang, true) {
+                        log::error!("[process] Failed to record downloaded subtitle: {}", e);
+                    }
                 }
                 Err(e) => {
                     log::warn!("[process] Subtitle download failed ({}): {}", lang, e);
@@ -830,7 +839,9 @@ fn process_single_file(
 
     for junk_path in &analysis.junk_files {
         let junk = Path::new(junk_path);
-        fs::remove_file(junk).ok();
+        if let Err(e) = fs::remove_file(junk) {
+            log::warn!("[process] Failed to remove junk file {}: {}", junk.display(), e);
+        }
         if let Some(junk_parent) = junk.parent() {
             clean_empty_dirs(junk_parent, source_root);
         }
@@ -1001,19 +1012,28 @@ pub fn edit_and_relocate(edit: &EditRequest, library_path: &str) -> Result<trans
         };
         let new_sub_path = new_dir.join(&new_sub_filename);
         if fs::rename(sub_path, &new_sub_path).is_err() {
-            if let Ok(_) = fs::copy(sub_path, &new_sub_path) {
-                fs::remove_file(sub_path).ok();
+            match fs::copy(sub_path, &new_sub_path) {
+                Ok(_) => {
+                    if let Err(e) = fs::remove_file(sub_path) {
+                        log::error!("[edit] Failed to remove source subtitle after copy: {}", e);
+                    }
+                }
+                Err(e) => {
+                    log::error!("[edit] Failed to copy subtitle {} → {}: {}", sub_path.display(), new_sub_path.display(), e);
+                }
             }
         }
     }
 
     // Update subtitle DB records to point to new paths
-    transaction::update_subtitle_paths(
+    if let Err(e) = transaction::update_subtitle_paths(
         &edit.transaction_id,
         old_stem,
         new_stem,
         new_dir.to_str().unwrap_or(""),
-    ).ok();
+    ) {
+        log::error!("[edit] Failed to update subtitle paths: {}", e);
+    }
 
     // 11. Clean empty source dirs
     clean_empty_dirs(old_dir, Path::new(library_path));
@@ -1023,7 +1043,9 @@ pub fn edit_and_relocate(edit: &EditRequest, library_path: &str) -> Result<trans
 
     // Reassign subtitle records to the new transaction
     let new_txn_id = uuid::Uuid::new_v4().to_string();
-    transaction::reassign_subtitle_records(&edit.transaction_id, &new_txn_id).ok();
+    if let Err(e) = transaction::reassign_subtitle_records(&edit.transaction_id, &new_txn_id) {
+        log::error!("[edit] Failed to reassign subtitle records: {}", e);
+    }
 
     let new_txn = transaction::Transaction {
         id: new_txn_id,
@@ -1104,11 +1126,11 @@ fn clean_empty_dirs(dir: &Path, root: &Path) {
     if dir == root || !dir.starts_with(root) {
         return;
     }
-    // Check if directory is empty (only .DS_Store counts as empty)
+    // A directory is "empty" if it contains only platform junk files
     let is_empty = match fs::read_dir(dir) {
         Ok(entries) => entries
             .filter_map(|e| e.ok())
-            .all(|e| e.file_name() == ".DS_Store"),
+            .all(|e| crate::junk::is_platform_junk(&e.path())),
         Err(_) => false,
     };
     if is_empty {

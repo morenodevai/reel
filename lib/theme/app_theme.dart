@@ -2,7 +2,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 
 /// Reel app color constants.
-/// Matches the dark theme from the Tauri reference app.
 class AppColors {
   AppColors._();
 
@@ -36,6 +35,18 @@ class AppColors {
   // Border
   static const border = Color(0xFF1E293B);
   static const borderHover = Color(0xFF334155);
+
+  /// Gradient pairs for format-based poster fallback backgrounds.
+  static const formatGradients = <String, List<Color>>{
+    'Movies': [Color(0x99783F04), Color(0x4D78350F)],
+    'Shows': [Color(0x991E3A5F), Color(0x4D1E3A5F)],
+    'Anime': [Color(0x994A1D96), Color(0x4D4A1D96)],
+    'Anime Movies': [Color(0x994A1D96), Color(0x4D4A1D96)],
+    'Animated Movies': [Color(0x997C2D12), Color(0x4D7C2D12)],
+    'Animated Shows': [Color(0x99164E63), Color(0x4D164E63)],
+    'Documentary': [Color(0x99166534), Color(0x4D166534)],
+  };
+  static const formatGradientDefault = [Color(0x991A1A2E), Color(0x4D1A1A2E)];
 }
 
 ThemeData buildAppTheme() {

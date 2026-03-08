@@ -1939,7 +1939,6 @@ dependencies = [
 name = "rust_lib_reel"
 version = "3.0.0"
 dependencies = [
- "cc",
  "chrono",
  "dirs",
  "encoding_rs",

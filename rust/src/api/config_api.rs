@@ -1,4 +1,4 @@
-/// Config FFI API -- load and save the YAML config at ~/.media-sort/config.yaml
+/// Config FFI API -- load and save the YAML config.
 
 use crate::config;
 

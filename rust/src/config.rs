@@ -20,7 +20,7 @@ pub struct Config {
     pub auto_download_subs: bool,
     #[serde(default)]
     pub qbittorrent: QbitConfig,
-    #[serde(default = "default_true")]
+    #[serde(default)]
     pub qbit_enabled: bool,
     #[serde(default = "default_true")]
     pub watcher_enabled: bool,
@@ -65,7 +65,7 @@ impl Default for Config {
             subtitle_languages: default_subtitle_languages(),
             auto_download_subs: true,
             qbittorrent: QbitConfig::default(),
-            qbit_enabled: true,
+            qbit_enabled: false,
             watcher_enabled: true,
             theme: "dark".to_string(),
         }

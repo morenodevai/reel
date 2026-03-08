@@ -158,7 +158,9 @@ pub fn undo_transaction(id: &str) -> AppResult<UndoResult> {
 
         let dest_path = Path::new(&txn.dest_path);
         if !dest_path.exists() {
-            conn.execute("UPDATE transactions SET undone = 1 WHERE id = ?1", params![id]).ok();
+            if let Err(e) = conn.execute("UPDATE transactions SET undone = 1 WHERE id = ?1", params![id]) {
+                log::warn!("[undo] Failed to mark transaction {} as undone: {}", id, e);
+            }
             return Ok(UndoResult {
                 success: false,
                 message: "File has been moved or deleted since organizing".to_string(),
@@ -190,24 +192,28 @@ pub fn undo_transaction(id: &str) -> AppResult<UndoResult> {
 
         if fs::rename(dest_path, source_path).is_err() {
             fs::copy(dest_path, source_path)?;
-            fs::remove_file(dest_path).ok();
+            if let Err(e) = fs::remove_file(dest_path) {
+                log::warn!("[undo] Failed to remove source after copy {}: {}", dest_path.display(), e);
+            }
         }
 
         let mut sub_stmt = conn.prepare(
             "SELECT dest_path FROM subtitle_records WHERE transaction_id = ?1",
         )?;
-        let sub_paths = collect_rows(&mut sub_stmt, params![id], |row| row.get(0))?;
+        let sub_paths: Vec<String> = collect_rows(&mut sub_stmt, params![id], |row| row.get(0))?;
         for sub_path in &sub_paths {
-            let _: &String = sub_path;
-            fs::remove_file(sub_path).ok();
+            if let Err(e) = fs::remove_file(sub_path) {
+                log::error!("[undo] Failed to remove subtitle {}: {}", sub_path, e);
+            }
         }
 
         let library_root = config::load_config()
             .ok()
             .and_then(|c| c.library_path)
             .map(std::path::PathBuf::from);
-        let stop_at = library_root.as_deref().unwrap_or(Path::new("/"));
-        clean_empty_parents(dest_path, stop_at);
+        if let Some(root) = library_root.as_deref() {
+            clean_empty_parents(dest_path, root);
+        }
 
         conn.execute("UPDATE transactions SET undone = 1 WHERE id = ?1", params![id])?;
 
@@ -447,11 +453,12 @@ pub fn update_subtitle_paths(
                 old_filename.to_string()
             };
             let new_path = Path::new(new_dir).join(&new_filename);
-            conn.execute(
+            if let Err(e) = conn.execute(
                 "UPDATE subtitle_records SET dest_path = ?1 WHERE id = ?2",
                 params![new_path.to_string_lossy().to_string(), sub_id],
-            )
-            .ok();
+            ) {
+                log::warn!("[relocate] Failed to update subtitle record {}: {}", sub_id, e);
+            }
         }
         Ok(())
     })

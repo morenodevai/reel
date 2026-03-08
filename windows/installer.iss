@@ -1,7 +1,8 @@
 [Setup]
 AppId={{667285C4-2954-457A-9BFD-A9421995974F}
 AppName=Reel
-AppVersion=1.0.0
+; Keep in sync with pubspec.yaml version
+AppVersion=2.2.0
 AppPublisher=Reel
 DefaultDirName={autopf}\Reel
 DefaultGroupName=Reel
@@ -20,8 +21,11 @@ MinVersion=10.0
 Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription: "Additional icons:"
 
 [Files]
-; Adjust this path to match your build output location
+; Flutter build output
 Source: "..\build\windows\x64\runner\Release\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs
+; Bundled dependencies (ffprobe, ffmpeg, AI model) — deployed to %APPDATA%\Reel by the app on first launch
+Source: "..\bundle\bin\*"; DestDir: "{app}\data\bin"; Flags: ignoreversion skipifsourcedoesntexist
+Source: "..\bundle\models\*"; DestDir: "{app}\data\models"; Flags: ignoreversion skipifsourcedoesntexist
 
 [Icons]
 Name: "{group}\Reel"; Filename: "{app}\reel.exe"
@@ -30,6 +34,9 @@ Name: "{autodesktop}\Reel"; Filename: "{app}\reel.exe"; Tasks: desktopicon
 [UninstallDelete]
 Type: files; Name: "{app}\*"
 Type: dirifempty; Name: "{app}"
+Type: filesandordirs; Name: "{app}\data"
+Type: filesandordirs; Name: "{userappdata}\Reel\bin"
+Type: filesandordirs; Name: "{userappdata}\Reel\models"
 
 [Run]
 Filename: "{app}\reel.exe"; Description: "Launch Reel"; Flags: nowait postinstall skipifsilent

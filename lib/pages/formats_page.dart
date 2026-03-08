@@ -141,7 +141,9 @@ class FormatsPageWidget extends ConsumerWidget {
             }
             ref.read(libraryProvider.notifier).refresh();
           }
-        } catch (_) {}
+        } catch (e) {
+          debugPrint('[formats] Failed to parse progress event: $e');
+        }
       },
       onDone: () {},
       onError: (e) {
@@ -155,7 +157,8 @@ class FormatsPageWidget extends ConsumerWidget {
       return Map<String, dynamic>.from(
         (const JsonDecoder().convert(json)) as Map,
       );
-    } catch (_) {
+    } catch (e) {
+      debugPrint('[formats] JSON parse error: $e');
       return {};
     }
   }
@@ -171,7 +174,7 @@ class FormatsPageWidget extends ConsumerWidget {
           .map((f) => f.path!)
           .toList();
       if (paths.isNotEmpty) {
-        _handleDrop(paths, ref);
+        await _handleDrop(paths, ref);
       }
     }
   }
@@ -248,7 +251,9 @@ class _LibraryPathRow extends StatelessWidget {
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       child: GestureDetector(
-        onTap: () => pipeline_api.revealInFinder(path: path),
+        onTap: () => pipeline_api.revealInFinder(path: path).catchError((e) {
+          debugPrint('[formats] Failed to reveal file: $e');
+        }),
         child: Row(
           children: [
             const Icon(Icons.folder_open_outlined, size: 12, color: AppColors.textQuaternary),

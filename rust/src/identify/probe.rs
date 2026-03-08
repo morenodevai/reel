@@ -11,11 +11,10 @@ pub struct ProbeMetadata {
     pub duration_secs: Option<f64>,
 }
 
-/// Get path to the bundled ffprobe binary in data_dir.
+/// Get path to the bundled ffprobe binary in the app's config directory.
 pub fn get_ffprobe_path() -> Option<std::path::PathBuf> {
     let bin_name = if cfg!(windows) { "ffprobe.exe" } else { "ffprobe" };
-    let path = dirs::data_dir()?
-        .join("media-sort")
+    let path = crate::config::config_dir()
         .join("bin")
         .join(bin_name);
 

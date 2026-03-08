@@ -196,23 +196,14 @@ pub(crate) fn to_os_lang(lang: &str) -> String {
     .to_string()
 }
 
-/// Get path to the bundled ffmpeg binary in data_dir.
+/// Get path to the bundled ffmpeg binary in the app's config directory.
 pub fn get_ffmpeg_path() -> Option<std::path::PathBuf> {
-    let bin_name = if cfg!(windows) {
-        "ffmpeg.exe"
-    } else {
-        "ffmpeg"
-    };
-    let ffmpeg_path = dirs::data_dir()?
-        .join("media-sort")
+    let bin_name = if cfg!(windows) { "ffmpeg.exe" } else { "ffmpeg" };
+    let path = crate::config::config_dir()
         .join("bin")
         .join(bin_name);
 
-    if ffmpeg_path.exists() {
-        Some(ffmpeg_path)
-    } else {
-        None
-    }
+    if path.exists() { Some(path) } else { None }
 }
 
 // Public API — delegates to submodules.

@@ -17,7 +17,7 @@ class QbitNotifier extends Notifier<QbitState> {
   @override
   QbitState build() {
     final config = ref.watch(configProvider).value;
-    final shouldRun = config != null && config.qbitEnabled;
+    final shouldRun = config != null && config.qbitEnabled && config.libraryPath != null;
     final isRunning = _pollerSub != null;
 
     if (shouldRun && !isRunning && !_starting) {

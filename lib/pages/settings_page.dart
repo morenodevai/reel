@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:reel/src/rust/config.dart';
 import 'package:reel/src/rust/api/ai_api.dart' as ai_api;
 import 'package:reel/src/rust/api/qbit_api.dart' as qbit_api;
@@ -47,14 +48,21 @@ class _SettingsPageWidgetState extends ConsumerState<SettingsPageWidget> {
   Timer? _rescanClearTimer;
   StreamSubscription<String>? _rescanSub;
   Timer? _aiPollTimer;
+  String _appVersion = '';
 
   @override
   void initState() {
     super.initState();
     _checkAi();
+    _loadVersion();
     _aiPollTimer = Timer.periodic(const Duration(seconds: 2), (_) {
       if (!_aiReady && _aiError == null) _checkAi();
     });
+  }
+
+  Future<void> _loadVersion() async {
+    final info = await PackageInfo.fromPlatform();
+    if (mounted) setState(() => _appVersion = info.version);
   }
 
   @override
@@ -70,8 +78,8 @@ class _SettingsPageWidgetState extends ConsumerState<SettingsPageWidget> {
     try {
       final ready = await ai_api.isAiReady();
       if (mounted) setState(() => _aiReady = ready);
-    } catch (_) {
-      if (mounted) setState(() => _aiError = 'Check failed');
+    } catch (e) {
+      if (mounted) setState(() => _aiError = 'Check failed: $e');
     }
   }
 
@@ -404,9 +412,9 @@ class _SettingsPageWidgetState extends ConsumerState<SettingsPageWidget> {
               SettingsCard(children: [
                 SettingRow(
                   label: 'Version',
-                  trailing: const Text(
-                    '3.0.0',
-                    style: TextStyle(fontSize: 12, color: AppColors.textQuaternary),
+                  trailing: Text(
+                    _appVersion.isEmpty ? '...' : _appVersion,
+                    style: const TextStyle(fontSize: 12, color: AppColors.textQuaternary),
                   ),
                 ),
                 const SizedBox(height: 8),

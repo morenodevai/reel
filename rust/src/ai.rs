@@ -1,8 +1,7 @@
-//! Local AI classification using bundled llama.cpp
+//! Local AI classification using bundled llama.cpp.
 //!
-//! This module provides automatic media type classification using a bundled
-//! TinyLlama model. The model ships inside the app bundle and is copied to
-//! data_dir on first launch by the setup hook in lib.rs. No internet required.
+//! Provides automatic media type classification using a TinyLlama 1.1B model.
+//! The model is deployed to the app's config directory on first launch.
 
 use llama_cpp_2::context::params::LlamaContextParams;
 use llama_cpp_2::llama_backend::LlamaBackend;
@@ -136,21 +135,18 @@ Reply with ONLY the category name, nothing else."#,
     }
 }
 
-/// Model filename (must match the resource bundled in tauri.conf.json)
+/// Model filename for the bundled TinyLlama classifier.
 pub const MODEL_FILENAME: &str = "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf";
 
-/// Get the model path in data_dir. The setup hook in lib.rs copies the bundled
-/// model here on first launch, so this should always exist after setup runs.
+/// Get the model path in the app's config directory.
 pub fn get_model_path() -> Result<PathBuf, String> {
-    let model_path = dirs::data_dir()
-        .unwrap_or_else(|| PathBuf::from("."))
-        .join("media-sort")
+    let model_path = crate::config::config_dir()
         .join("models")
         .join(MODEL_FILENAME);
 
     if !model_path.exists() {
         return Err(format!(
-            "AI model not found at {}. It should have been copied from the app bundle on first launch.",
+            "AI model not found at {}",
             model_path.display()
         ));
     }

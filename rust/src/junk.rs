@@ -57,6 +57,14 @@ pub fn is_junk_file(path: &Path) -> bool {
     false
 }
 
+/// Check if a file is OS-generated detritus (.DS_Store, Thumbs.db, desktop.ini).
+/// Narrower than is_junk_file — only matches platform junk, not torrent extras.
+pub fn is_platform_junk(path: &Path) -> bool {
+    path.file_name()
+        .and_then(|n| n.to_str())
+        .map_or(false, |name| JUNK_FILENAMES.contains(&name))
+}
+
 /// Find all junk files in a directory (non-recursive).
 pub fn find_junk_files(dir: &Path) -> Vec<String> {
     let mut junk = Vec::new();

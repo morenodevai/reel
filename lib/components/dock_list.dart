@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 
-/// macOS Dock-style magnification list.
+/// Dock-style magnification list.
 ///
 /// Cards under the cursor swell (maxScale), adjacent cards scale proportionally
 /// less via cosine bell curve falloff. Includes a dwell timer to prevent the

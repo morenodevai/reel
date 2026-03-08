@@ -559,11 +559,15 @@ class SubtitlePicker extends ConsumerWidget {
         final id = value.substring(9);
         try {
           n.setSubtitleTrack(s.subtitleTracks.firstWhere((t) => t.id == id));
-        } catch (_) {}
+        } catch (e) {
+          debugPrint('[player] Subtitle track lookup failed: $e');
+        }
       } else if (value.startsWith('ext:')) {
         try {
           n.loadExternalSubtitle(s.externalSubs.firstWhere((e) => e.path == value.substring(4)));
-        } catch (_) {}
+        } catch (e) {
+          debugPrint('[player] External subtitle lookup failed: $e');
+        }
       }
     });
   }
@@ -626,7 +630,9 @@ class AudioPicker extends ConsumerWidget {
         ref.read(playbackProvider.notifier).setAudioTrack(
           s.audioTracks.firstWhere((t) => t.id == value),
         );
-      } catch (_) {}
+      } catch (e) {
+        debugPrint('[player] Audio track lookup failed: $e');
+      }
     });
   }
 }

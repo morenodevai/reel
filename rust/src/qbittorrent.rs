@@ -291,11 +291,13 @@ pub fn import_torrent(hash: &str, config: &Config) -> Result<pipeline::BatchResu
 
     // Pause the torrent before importing (prevent re-seeding issues)
     let pause_url = format!("{}/api/v2/torrents/pause", base_url(qbit));
-    client
+    if let Err(e) = client
         .post(&pause_url)
         .form(&[("hashes", hash)])
         .send()
-        .ok();
+    {
+        log::warn!("[qbit] Failed to pause torrent {}: {}", hash, e);
+    }
 
     // Run through the pipeline: scan → analyze → process
     let video_files = pipeline::scan_video_files(&video_paths);
@@ -350,11 +352,13 @@ pub fn import_torrent(hash: &str, config: &Config) -> Result<pipeline::BatchResu
     // If auto_remove is enabled and all files succeeded, remove torrent from qBittorrent
     if qbit.auto_remove && failed == 0 {
         let delete_url = format!("{}/api/v2/torrents/delete", base_url(qbit));
-        client
+        if let Err(e) = client
             .post(&delete_url)
             .form(&[("hashes", hash), ("deleteFiles", "false")])
             .send()
-            .ok();
+        {
+            log::warn!("[qbit] Failed to auto-remove torrent {}: {}", hash, e);
+        }
     }
 
     Ok(pipeline::BatchResult {

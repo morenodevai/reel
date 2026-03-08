@@ -29,7 +29,7 @@ class TitleBar extends ConsumerWidget {
         ),
         child: Row(
           children: [
-            // macOS traffic light space + back button
+            // Platform leading space + back button
             SizedBox(width: Platform.isMacOS ? 78 : 8),
             if (canGoBack)
               _TitleBarButton(

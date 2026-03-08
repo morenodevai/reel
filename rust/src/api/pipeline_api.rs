@@ -1,4 +1,4 @@
-/// Pipeline FFI API -- process files, reveal in finder, rescan library.
+/// Pipeline FFI API -- process files, reveal in file manager, rescan library.
 ///
 /// Background processing uses StreamSink to emit progress events back to Dart.
 
@@ -13,7 +13,8 @@ use std::process::Command;
 fn common_parent_of<'a>(paths: impl Iterator<Item = &'a str>) -> String {
     let mut common: Option<PathBuf> = None;
     for p in paths {
-        let parent = Path::new(p).parent().unwrap_or(Path::new("/"));
+        let path = Path::new(p);
+        let parent = path.parent().unwrap_or(path);
         match common {
             None => common = Some(parent.to_path_buf()),
             Some(ref mut c) => {
@@ -30,7 +31,7 @@ fn common_parent_of<'a>(paths: impl Iterator<Item = &'a str>) -> String {
         }
     }
     common
-        .unwrap_or_else(|| PathBuf::from("/"))
+        .unwrap_or_default()
         .to_string_lossy()
         .to_string()
 }

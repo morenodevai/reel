@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:reel/src/rust/pipeline.dart';
 import 'package:reel/src/rust/transaction.dart';
 import 'package:reel/src/rust/api/playback_api.dart' as playback_api;
@@ -146,7 +147,9 @@ Future<PlayTarget?> resolvePlayTarget(MediaDetail detail) async {
   List<WatchProgress> allProgress = [];
   try {
     allProgress = await playback_api.loadAllProgress(mediaPath: detail.path);
-  } catch (_) {}
+  } catch (e) {
+    debugPrint('[playback] Failed to load watch progress for play target: $e');
+  }
 
   final progressMap = {for (final p in allProgress) p.filePath: p};
 

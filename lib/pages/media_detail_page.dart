@@ -49,7 +49,9 @@ class _MediaDetailPageWidgetState
       try {
         final allProgress = await playback_api.loadAllProgress(mediaPath: detail.path);
         progressMap = {for (final p in allProgress) p.filePath: p};
-      } catch (_) {}
+      } catch (e) {
+        debugPrint('[detail] Failed to load watch progress: $e');
+      }
 
       // Determine first available season, preferring one with in-progress episodes
       final seasons = _getSeasons(detail);
@@ -140,7 +142,7 @@ class _MediaDetailPageWidgetState
             detail: detail,
             isTV: isTV,
             onPlay: () => _handlePlay(detail),
-            onReveal: () => _revealInFinder(detail.path),
+            onReveal: () => _revealInExplorer(detail.path),
             onDownloadSubs: () => _handleDownloadSubs(detail.path),
             downloadingSubs: _downloadingSubs,
             onRestartSeason: isTV ? () => _handleRestartSeason(detail, currentEpisodes) : null,
@@ -233,11 +235,13 @@ class _MediaDetailPageWidgetState
     ref.read(navigationProvider.notifier).goToPlayer(detail, file, playlist, index);
   }
 
-  void _handleRestartSeason(MediaDetail detail, List<MediaFile> currentEpisodes) async {
+  Future<void> _handleRestartSeason(MediaDetail detail, List<MediaFile> currentEpisodes) async {
     for (final f in currentEpisodes) {
       try {
         await playback_api.setFileUnwatched(filePath: f.path);
-      } catch (_) {}
+      } catch (e) {
+        debugPrint('[detail] Failed to unwatch ${f.path}: $e');
+      }
     }
     if (!mounted) return;
     if (currentEpisodes.isNotEmpty) {
@@ -247,11 +251,13 @@ class _MediaDetailPageWidgetState
     }
   }
 
-  void _handleRestartShow(MediaDetail detail) async {
+  Future<void> _handleRestartShow(MediaDetail detail) async {
     for (final f in detail.files) {
       try {
         await playback_api.setFileUnwatched(filePath: f.path);
-      } catch (_) {}
+      } catch (e) {
+        debugPrint('[detail] Failed to unwatch ${f.path}: $e');
+      }
     }
     if (!mounted) return;
     if (detail.files.isNotEmpty) {
@@ -266,12 +272,12 @@ class _MediaDetailPageWidgetState
     }
   }
 
-  void _revealInFinder(String path) {
+  void _revealInExplorer(String path) {
     pipeline_api.revealInFinder(path: path).catchError((e) {
       if (mounted) {
         ref
             .read(toastProvider.notifier)
-            .show('Failed to reveal in Finder: $e', type: ToastType.error);
+            .show('Failed to reveal file: $e', type: ToastType.error);
       }
     });
   }
@@ -287,7 +293,7 @@ class _MediaDetailPageWidgetState
     } finally {
       if (mounted) {
         setState(() => _downloadingSubs = false);
-        _loadDetails();
+        await _loadDetails();
       }
     }
   }

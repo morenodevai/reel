@@ -1,92 +1,52 @@
 use std::env;
 use std::path::PathBuf;
-use std::process::Command;
 
-fn main() {
-    println!("cargo:rerun-if-changed=build.rs");
+/// Find and link the cpp-httplib static library built by llama-cpp-sys-2.
+fn link_httplib() {
     let out_dir = env::var("OUT_DIR").unwrap();
+    let out_path = PathBuf::from(&out_dir);
 
-    // Navigate from our OUT_DIR up to the shared build/ directory.
     // OUT_DIR = .../target/{profile}/build/reel_core-{hash}/out
     // We need: .../target/{profile}/build/
-    let out_path = PathBuf::from(&out_dir);
-    let build_dir = out_path
-        .parent()    // reel_core-HASH
-        .and_then(|p| p.parent());  // build/
+    let build_dir = match out_path.parent().and_then(|p| p.parent()) {
+        Some(d) => d,
+        None => return,
+    };
 
-    if let Some(build_dir) = build_dir {
-        // Find libcpp-httplib.a in any llama-cpp-sys-2 build directory
-        let mut found = false;
-        if let Ok(entries) = std::fs::read_dir(build_dir) {
-            for entry in entries.flatten() {
-                let name = entry.file_name().to_string_lossy().to_string();
-                if !name.starts_with("llama-cpp-sys-2-") {
-                    continue;
-                }
+    let entries = match std::fs::read_dir(build_dir) {
+        Ok(e) => e,
+        Err(_) => return,
+    };
 
-                let httplib_lib = entry.path()
-                    .join("out")
-                    .join("build")
-                    .join("vendor")
-                    .join("cpp-httplib")
-                    .join("libcpp-httplib.a");
-
-                if !httplib_lib.exists() {
-                    continue;
-                }
-
-                eprintln!("cargo:warning=Found libcpp-httplib.a at {}", httplib_lib.display());
-
-                // Extract objects from the archive
-                let extract_dir = PathBuf::from(&out_dir).join("httplib_objects");
-                let _ = std::fs::create_dir_all(&extract_dir);
-
-                let status = Command::new("ar")
-                    .args(["x", httplib_lib.to_str().unwrap()])
-                    .current_dir(&extract_dir)
-                    .status();
-
-                if let Ok(s) = status {
-                    if s.success() {
-                        // Use cc to re-compile the extracted objects into a library
-                        // that cargo will merge into our staticlib
-                        let mut build = cc::Build::new();
-                        build.cpp(true);
-                        build.flag("-std=c++17");
-
-                        let mut has_objects = false;
-                        if let Ok(objs) = std::fs::read_dir(&extract_dir) {
-                            for obj in objs.flatten() {
-                                let p = obj.path();
-                                if p.extension().map_or(false, |e| e == "o") {
-                                    eprintln!("cargo:warning=Merging object: {}", p.display());
-                                    build.object(&p);
-                                    has_objects = true;
-                                }
-                            }
-                        }
-
-                        if has_objects {
-                            // Write minimal source to satisfy cc::Build
-                            let dummy = PathBuf::from(&out_dir).join("dummy_httplib_merge.cpp");
-                            std::fs::write(&dummy, "// merged httplib objects\n").unwrap();
-                            build.file(&dummy);
-                            build.compile("httplib_merged");
-                            found = true;
-                        }
-                    }
-                }
-
-                if found { break; }
-            }
+    for entry in entries.flatten() {
+        let name = entry.file_name().to_string_lossy().to_string();
+        if !name.starts_with("llama-cpp-sys-2-") {
+            continue;
         }
 
-        if !found {
-            eprintln!("cargo:warning=Could not find libcpp-httplib.a in build directory");
+        let httplib_dir = entry
+            .path()
+            .join("out")
+            .join("build")
+            .join("vendor")
+            .join("cpp-httplib");
+
+        // Check for both Unix (.a) and MSVC (.lib) static library names.
+        let has_lib = httplib_dir.join("libcpp-httplib.a").exists()
+            || httplib_dir.join("cpp-httplib.lib").exists();
+
+        if has_lib {
+            println!("cargo:rustc-link-search=native={}", httplib_dir.display());
+            println!("cargo:rustc-link-lib=static=cpp-httplib");
+            return;
         }
     }
 
-    // macOS frameworks
+    eprintln!("cargo:warning=Could not find cpp-httplib library in build directory");
+}
+
+/// Link platform-specific system libraries.
+fn link_platform_libs() {
     #[cfg(target_os = "macos")]
     {
         println!("cargo:rustc-link-lib=framework=SystemConfiguration");
@@ -97,4 +57,15 @@ fn main() {
         println!("cargo:rustc-link-lib=framework=Accelerate");
         println!("cargo:rustc-link-lib=c++");
     }
+
+    #[cfg(target_os = "windows")]
+    {
+        println!("cargo:rustc-link-lib=ws2_32");
+    }
+}
+
+fn main() {
+    println!("cargo:rerun-if-changed=build.rs");
+    link_httplib();
+    link_platform_libs();
 }

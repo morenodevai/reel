@@ -202,7 +202,9 @@ pub fn rescan_library(config: &Config, mut progress_fn: impl FnMut(&RescanProgre
                                 true
                             } else {
                                 log::error!("[rescan] Copy verification failed for {} (src={}B dst={}B)", video.display(), src_len, dst_len);
-                                fs::remove_file(dest).ok();
+                                if let Err(e) = fs::remove_file(dest) {
+                                    log::warn!("[rescan] Failed to clean up dest after copy verification failure {}: {}", dest.display(), e);
+                                }
                                 false
                             }
                         }
@@ -236,7 +238,11 @@ pub fn rescan_library(config: &Config, mut progress_fn: impl FnMut(&RescanProgre
                             let sub_dest = dest_dir.join(&new_sub_name);
                             if fs::rename(&epath, &sub_dest).is_err() {
                                 match fs::copy(&epath, &sub_dest) {
-                                    Ok(_) => { fs::remove_file(&epath).ok(); }
+                                    Ok(_) => {
+                                        if let Err(e) = fs::remove_file(&epath) {
+                                            log::warn!("[rescan] Failed to remove source subtitle {}: {}", epath.display(), e);
+                                        }
+                                    }
                                     Err(e) => {
                                         log::error!("[rescan] Failed to copy subtitle {} → {}: {}", epath.display(), sub_dest.display(), e);
                                     }
@@ -246,7 +252,11 @@ pub fn rescan_library(config: &Config, mut progress_fn: impl FnMut(&RescanProgre
                             let art_dest = dest_dir.join(&ename);
                             if fs::rename(&epath, &art_dest).is_err() {
                                 match fs::copy(&epath, &art_dest) {
-                                    Ok(_) => { fs::remove_file(&epath).ok(); }
+                                    Ok(_) => {
+                                        if let Err(e) = fs::remove_file(&epath) {
+                                            log::warn!("[rescan] Failed to remove source artwork {}: {}", epath.display(), e);
+                                        }
+                                    }
                                     Err(e) => {
                                         log::error!("[rescan] Failed to copy artwork {} → {}: {}", epath.display(), art_dest.display(), e);
                                     }
@@ -258,7 +268,9 @@ pub fn rescan_library(config: &Config, mut progress_fn: impl FnMut(&RescanProgre
 
                 // Update transaction records
                 if let Some(old_txn) = transaction::get_transaction_by_dest(&current_path) {
-                    transaction::mark_undone(&old_txn.id).ok();
+                    if let Err(e) = transaction::mark_undone(&old_txn.id) {
+                        log::warn!("[rescan] Failed to mark old transaction {} as undone: {}", old_txn.id, e);
+                    }
                 }
                 if let Err(e) = transaction::record(&transaction::Transaction {
                     id: uuid::Uuid::new_v4().to_string(),
@@ -357,7 +369,7 @@ fn collect_videos_in_title(title_path: &Path) -> Vec<PathBuf> {
     videos
 }
 
-/// Remove empty directories recursively (bottom-up), including .DS_Store cleanup.
+/// Remove empty directories recursively (bottom-up), cleaning platform junk first.
 fn cleanup_empty_dir_recursive(dir: &Path) {
     if !dir.is_dir() { return; }
     if let Ok(entries) = fs::read_dir(dir) {
@@ -365,12 +377,16 @@ fn cleanup_empty_dir_recursive(dir: &Path) {
             let p = entry.path();
             if p.is_dir() {
                 cleanup_empty_dir_recursive(&p);
-            } else if p.file_name().map(|n| n == ".DS_Store").unwrap_or(false) {
-                fs::remove_file(&p).ok();
-            } else if p.file_name().map(|n| n.to_string_lossy().ends_with(".thumb.jpg")).unwrap_or(false) {
-                fs::remove_file(&p).ok();
+            } else if crate::junk::is_platform_junk(&p)
+                || p.file_name()
+                    .map(|n| n.to_string_lossy().ends_with(".thumb.jpg"))
+                    .unwrap_or(false)
+            {
+                if let Err(e) = fs::remove_file(&p) {
+                    log::warn!("[rescan] Failed to remove junk file {}: {}", p.display(), e);
+                }
             }
         }
     }
-    fs::remove_dir(dir).ok(); // only succeeds if empty
+    let _ = fs::remove_dir(dir); // only succeeds if empty
 }

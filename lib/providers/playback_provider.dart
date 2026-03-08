@@ -145,8 +145,8 @@ class PlaybackNotifier extends Notifier<PlaybackState> {
       if (!_disposed) {
         state = state.copyWith(externalSubs: externalSubs);
       }
-    } catch (_) {
-      // Non-critical
+    } catch (e) {
+      debugPrint('[playback] Failed to discover external subtitles: $e');
     }
   }
 
@@ -349,8 +349,8 @@ class PlaybackNotifier extends Notifier<PlaybackState> {
         episodeTitle: file.episodeTitle,
         mediaType: detail?.mediaType,
       );
-    } catch (_) {
-      // Non-critical
+    } catch (e) {
+      debugPrint('[playback] Failed to save watch progress: $e');
     }
   }
 
@@ -359,7 +359,9 @@ class PlaybackNotifier extends Notifier<PlaybackState> {
     if (file == null) return;
     try {
       await playback_api.setFileCompleted(filePath: file.path);
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('[playback] Failed to mark file completed: $e');
+    }
   }
 
   /// Called when navigating away from the player.

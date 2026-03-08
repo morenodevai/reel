@@ -55,5 +55,16 @@ lib/src/rust/frb_generated.web.dart
 # macOS build
 macos/Flutter/ephemeral/
 
+# Windows build
+windows/flutter/ephemeral/
+
+# Windows OS junk
+Thumbs.db
+desktop.ini
+
+# Bundled dependencies (large binaries, not tracked)
+bundle/bin/
+bundle/models/
+
 # Flutter plugins
 .flutter-plugins

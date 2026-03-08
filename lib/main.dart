@@ -1,5 +1,7 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path/path.dart' as p;
 import 'package:window_manager/window_manager.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:reel/src/rust/frb_generated.dart';
@@ -27,6 +29,9 @@ Future<void> main() async {
   } catch (e) {
     debugPrint('MediaKit init failed: $e');
   }
+
+  // Deploy bundled assets (ffprobe, ffmpeg, AI model) on first launch
+  await _deployBundledAssets();
 
   // Initialize the Rust bridge
   await RustLib.init();
@@ -191,5 +196,49 @@ class _AppShellState extends ConsumerState<AppShell> {
           startIndex: page.startIndex,
         ),
     };
+  }
+}
+
+/// Deploy bundled assets from {app}/data/ to %APPDATA%/Reel/ on first launch.
+///
+/// The installer places ffprobe.exe, ffmpeg.exe, and the TinyLlama model into
+/// {app}/data/bin/ and {app}/data/models/. This function copies them to the
+/// Rust config directory (%APPDATA%/Reel/) where the backend expects them.
+/// Files that already exist at the destination are skipped.
+Future<void> _deployBundledAssets() async {
+  if (!Platform.isWindows) return;
+
+  final appDir = File(Platform.resolvedExecutable).parent.path;
+  final dataDir = Directory(p.join(appDir, 'data'));
+  if (!dataDir.existsSync()) return;
+
+  final appData = Platform.environment['APPDATA'];
+  if (appData == null) {
+    debugPrint('[deploy] APPDATA environment variable not set — skipping asset deployment');
+    return;
+  }
+  final destRoot = Directory(p.join(appData, 'Reel'));
+
+  try {
+    await _copyDirIfMissing(dataDir, destRoot);
+  } catch (e) {
+    debugPrint('[deploy] Asset deployment failed: $e');
+  }
+}
+
+/// Recursively copy files from [src] to [dest], skipping files that already exist.
+Future<void> _copyDirIfMissing(Directory src, Directory dest) async {
+  await dest.create(recursive: true);
+  await for (final entity in src.list()) {
+    final name = p.basename(entity.path);
+    if (entity is File) {
+      final destFile = File(p.join(dest.path, name));
+      if (!destFile.existsSync()) {
+        debugPrint('[deploy] Copying $name');
+        await entity.copy(destFile.path);
+      }
+    } else if (entity is Directory) {
+      await _copyDirIfMissing(entity, Directory(p.join(dest.path, name)));
+    }
   }
 }
