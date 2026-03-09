@@ -119,6 +119,7 @@ pub fn process_background(
                 &cfg.subtitle_languages,
                 &cfg.opensubs_api_key,
                 &cleanup_root,
+                &library,
             ) {
                 Ok(()) => succeeded += 1,
                 Err(_) => failed += 1,

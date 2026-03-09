@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:reel/src/rust/pipeline.dart';
+import 'package:reel/src/rust/library.dart';
 import 'package:reel/src/rust/api/library_api.dart' as library_api;
 import 'package:reel/src/rust/api/pipeline_api.dart' as pipeline_api;
 import 'package:reel/src/rust/api/subtitle_api.dart' as subtitle_api;
@@ -8,7 +8,7 @@ import 'package:reel/src/rust/api/playback_api.dart' as playback_api;
 import 'package:reel/providers/toast_provider.dart';
 import 'package:reel/providers/navigation_provider.dart';
 import 'package:reel/providers/playback_provider.dart';
-import 'package:reel/src/rust/transaction.dart';
+import 'package:reel/src/rust/db/watch_progress.dart';
 import 'package:reel/pages/media_detail_widgets.dart';
 import 'package:reel/theme/app_theme.dart';
 

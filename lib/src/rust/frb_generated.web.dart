@@ -17,17 +17,21 @@ import 'api/qbit_api.dart';
 import 'api/review_api.dart';
 import 'api/simple.dart';
 import 'api/subtitle_api.dart';
+import 'api/trash_api.dart';
 import 'api/watcher_api.dart';
+import 'companion.dart';
 import 'config.dart';
 import 'dart:async';
 import 'dart:convert';
+import 'db/transactions.dart';
+import 'db/watch_progress.dart';
 import 'formats.dart';
 import 'frb_generated.dart';
-import 'metadata.dart';
+import 'identify/tmdb.dart';
+import 'library.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated_web.dart';
 import 'pipeline.dart';
 import 'qbittorrent.dart';
-import 'transaction.dart';
 
 abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   RustLibApiImplPlatform({
@@ -137,6 +141,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<Transaction> dco_decode_list_transaction(dynamic raw);
 
   @protected
+  List<TrashItem> dco_decode_list_trash_item(dynamic raw);
+
+  @protected
   List<WatchProgress> dco_decode_list_watch_progress(dynamic raw);
 
   @protected
@@ -177,6 +184,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   Transaction dco_decode_transaction(dynamic raw);
+
+  @protected
+  TrashItem dco_decode_trash_item(dynamic raw);
 
   @protected
   int dco_decode_u_16(dynamic raw);
@@ -310,6 +320,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<Transaction> sse_decode_list_transaction(SseDeserializer deserializer);
 
   @protected
+  List<TrashItem> sse_decode_list_trash_item(SseDeserializer deserializer);
+
+  @protected
   List<WatchProgress> sse_decode_list_watch_progress(
     SseDeserializer deserializer,
   );
@@ -354,6 +367,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   Transaction sse_decode_transaction(SseDeserializer deserializer);
+
+  @protected
+  TrashItem sse_decode_trash_item(SseDeserializer deserializer);
 
   @protected
   int sse_decode_u_16(SseDeserializer deserializer);
@@ -530,6 +546,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_list_trash_item(
+    List<TrashItem> self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_list_watch_progress(
     List<WatchProgress> self,
     SseSerializer serializer,
@@ -579,6 +601,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_transaction(Transaction self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_trash_item(TrashItem self, SseSerializer serializer);
 
   @protected
   void sse_encode_u_16(int self, SseSerializer serializer);

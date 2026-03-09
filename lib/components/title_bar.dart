@@ -6,7 +6,8 @@ import 'package:reel/theme/app_theme.dart';
 
 class TitleBar extends ConsumerWidget {
   final int reviewCount;
-  const TitleBar({super.key, this.reviewCount = 0});
+  final int trashCount;
+  const TitleBar({super.key, this.reviewCount = 0, this.trashCount = 0});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -28,7 +29,6 @@ class TitleBar extends ConsumerWidget {
         ),
         child: Row(
           children: [
-            // Platform leading space + back button
             const SizedBox(width: 8),
             if (canGoBack)
               _TitleBarButton(
@@ -47,26 +47,107 @@ class TitleBar extends ConsumerWidget {
                 overflow: TextOverflow.ellipsis,
               ),
             ),
-            // Review badge
             if (reviewCount > 0 && currentPage is! ReviewAppPage)
-              _ReviewBadge(
+              _IconBadge(
+                icon: Icons.assignment_outlined,
                 count: reviewCount,
+                badgeColor: AppColors.error,
                 onTap: () => nav.goToReview([]),
               ),
-            // History
+            if (trashCount > 0 && currentPage is! TrashAppPage)
+              _IconBadge(
+                icon: Icons.delete_outline,
+                count: trashCount,
+                badgeColor: AppColors.textQuaternary,
+                onTap: nav.goToTrash,
+              ),
             if (currentPage is! HistoryAppPage)
               _TitleBarButton(
                 icon: Icons.history,
                 onTap: nav.goToHistory,
               ),
-            // Settings
             if (currentPage is! SettingsAppPage)
               _TitleBarButton(
                 icon: Icons.settings_outlined,
                 onTap: nav.goToSettings,
               ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 8),
+            // Window controls
+            const _WindowControls(),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _WindowControls extends StatelessWidget {
+  const _WindowControls();
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _WindowButton(
+          icon: Icons.minimize,
+          onTap: () => windowManager.minimize(),
+        ),
+        _WindowButton(
+          icon: Icons.crop_square,
+          onTap: () async {
+            if (await windowManager.isMaximized()) {
+              windowManager.unmaximize();
+            } else {
+              windowManager.maximize();
+            }
+          },
+        ),
+        _WindowButton(
+          icon: Icons.close,
+          hoverColor: AppColors.error,
+          onTap: () => windowManager.close(),
+        ),
+        const SizedBox(width: 4),
+      ],
+    );
+  }
+}
+
+class _WindowButton extends StatefulWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+  final Color? hoverColor;
+  const _WindowButton({required this.icon, required this.onTap, this.hoverColor});
+
+  @override
+  State<_WindowButton> createState() => _WindowButtonState();
+}
+
+class _WindowButtonState extends State<_WindowButton> {
+  bool _hovering = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _hovering && widget.hoverColor != null
+        ? widget.hoverColor!
+        : AppColors.textTertiary;
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovering = true),
+      onExit: (_) => setState(() => _hovering = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: Container(
+          width: 34,
+          height: 28,
+          decoration: BoxDecoration(
+            color: _hovering
+                ? (widget.hoverColor ?? AppColors.textTertiary).withValues(alpha: 0.1)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Icon(widget.icon, size: 16, color: color),
         ),
       ),
     );
@@ -93,10 +174,12 @@ class _TitleBarButton extends StatelessWidget {
   }
 }
 
-class _ReviewBadge extends StatelessWidget {
+class _IconBadge extends StatelessWidget {
+  final IconData icon;
   final int count;
+  final Color badgeColor;
   final VoidCallback onTap;
-  const _ReviewBadge({required this.count, required this.onTap});
+  const _IconBadge({required this.icon, required this.count, required this.badgeColor, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -109,14 +192,14 @@ class _ReviewBadge extends StatelessWidget {
           child: Stack(
             clipBehavior: Clip.none,
             children: [
-              const Icon(Icons.assignment_outlined, size: 18, color: AppColors.textTertiary),
+              Icon(icon, size: 18, color: AppColors.textTertiary),
               Positioned(
                 top: -4,
                 right: -6,
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                   decoration: BoxDecoration(
-                    color: AppColors.error,
+                    color: badgeColor,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   constraints: const BoxConstraints(minWidth: 16),

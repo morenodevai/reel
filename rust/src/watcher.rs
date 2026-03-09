@@ -166,6 +166,7 @@ where
                     &config_for_thread.subtitle_languages,
                     &config_for_thread.opensubs_api_key,
                     &watch_path_owned,
+                    &library,
                 ) {
                     Ok(()) => {
                         log::info!("Watcher: organized {} → {}", filename, analysis.dest_path);

@@ -9,6 +9,7 @@ pub fn init_db() -> AppResult<()> {
         create_tables(conn)?;
         migrate_to_v3_1(conn)?;
         create_watch_progress_table(conn)?;
+        create_trash_table(conn)?;
         Ok(())
     })
 }
@@ -90,6 +91,21 @@ fn migrate_to_v3_1(conn: &rusqlite::Connection) -> AppResult<()> {
         )?;
         log::info!("Database migration: added locked + confidence columns");
     }
+    Ok(())
+}
+
+fn create_trash_table(conn: &rusqlite::Connection) -> AppResult<()> {
+    conn.execute_batch(
+        "CREATE TABLE IF NOT EXISTS trash_items (
+            id TEXT PRIMARY KEY,
+            transaction_id TEXT NOT NULL,
+            original_path TEXT NOT NULL,
+            trash_path TEXT NOT NULL,
+            filename TEXT NOT NULL,
+            timestamp TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_trash_txn ON trash_items(transaction_id);",
+    )?;
     Ok(())
 }
 

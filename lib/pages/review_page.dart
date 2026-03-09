@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:reel/src/rust/transaction.dart';
+import 'package:reel/src/rust/db/transactions.dart';
 import 'package:reel/src/rust/api/review_api.dart' as review_api;
 import 'package:reel/src/rust/api/history_api.dart' as history_api;
 import 'package:reel/providers/toast_provider.dart';

@@ -10,6 +10,7 @@ pub mod pipeline_api;
 pub mod history_api;
 pub mod review_api;
 pub mod subtitle_api;
+pub mod trash_api;
 pub mod watcher_api;
 pub mod qbit_api;
 pub mod playback_api;

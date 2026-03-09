@@ -112,6 +112,23 @@ pub fn db_path() -> PathBuf {
     config_dir().join("transactions.db")
 }
 
+/// Return the trash directory inside the library root.
+/// Creates it if it doesn't exist.
+pub fn trash_dir(library_path: &str) -> std::io::Result<PathBuf> {
+    let dir = PathBuf::from(library_path).join("_trash");
+    std::fs::create_dir_all(&dir)?;
+    Ok(dir)
+}
+
+/// Ensure a library root folder named "Reel" exists inside the given parent.
+/// Returns the full path to the library root (e.g. "E:\Media\Reel").
+pub fn ensure_library_root(parent: &str) -> Result<String, String> {
+    let root = PathBuf::from(parent).join("Reel");
+    std::fs::create_dir_all(&root)
+        .map_err(|e| format!("Failed to create library root: {}", e))?;
+    Ok(root.to_string_lossy().to_string())
+}
+
 pub fn load_config() -> Result<Config, String> {
     // On Windows, migrate from old ~/.media-sort to %APPDATA%\Reel if needed
     if cfg!(windows) {

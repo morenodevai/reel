@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
-import 'package:reel/src/rust/pipeline.dart';
-import 'package:reel/src/rust/transaction.dart';
+import 'package:reel/src/rust/library.dart';
+import 'package:reel/src/rust/db/watch_progress.dart';
 import 'package:reel/src/rust/api/playback_api.dart' as playback_api;
 import 'package:media_kit/media_kit.dart';
 

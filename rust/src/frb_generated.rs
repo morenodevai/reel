@@ -37,7 +37,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.11.1";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -885099780;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 1035539967;
 
 // Section: executor
 
@@ -143,6 +143,39 @@ fn wire__crate__api__review_api__clear_all_pending_impl(
         },
     )
 }
+fn wire__crate__api__trash_api__delete_trash_item_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "delete_trash_item",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_id = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, String>((move || {
+                    let output_ok = crate::api::trash_api::delete_trash_item(api_id)?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
 fn wire__crate__api__playback_api__discover_external_subtitles_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
@@ -204,6 +237,71 @@ fn wire__crate__api__pipeline_api__edit_and_relocate_impl(
             move |context| {
                 transform_result_sse::<_, String>((move || {
                     let output_ok = crate::api::pipeline_api::edit_and_relocate(api_edit)?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__crate__api__trash_api__empty_trash_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "empty_trash",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, String>((move || {
+                    let output_ok = crate::api::trash_api::empty_trash()?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__crate__api__config_api__ensure_library_root_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "ensure_library_root",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_parent = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, String>((move || {
+                    let output_ok = crate::api::config_api::ensure_library_root(api_parent)?;
                     Ok(output_ok)
                 })())
             }
@@ -543,6 +641,70 @@ fn wire__crate__api__review_api__get_review_items_impl(
             move |context| {
                 transform_result_sse::<_, String>((move || {
                     let output_ok = crate::api::review_api::get_review_items(api_batch_ids)?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__crate__api__trash_api__get_trash_count_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "get_trash_count",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, String>((move || {
+                    let output_ok = crate::api::trash_api::get_trash_count()?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__crate__api__trash_api__get_trash_items_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "get_trash_items",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, String>((move || {
+                    let output_ok = crate::api::trash_api::get_trash_items()?;
                     Ok(output_ok)
                 })())
             }
@@ -1074,6 +1236,39 @@ fn wire__crate__api__pipeline_api__rescan_library_impl(
             move |context| {
                 transform_result_sse::<_, String>((move || {
                     let output_ok = crate::api::pipeline_api::rescan_library(api_sink)?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__crate__api__trash_api__restore_trash_item_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "restore_trash_item",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_id = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, String>((move || {
+                    let output_ok = crate::api::trash_api::restore_trash_item(api_id)?;
                     Ok(output_ok)
                 })())
             }
@@ -1702,7 +1897,7 @@ impl SseDecode for f64 {
     }
 }
 
-impl SseDecode for crate::pipeline::FormatInfo {
+impl SseDecode for crate::library::FormatInfo {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut var_name = <String>::sse_decode(deserializer);
@@ -1710,7 +1905,7 @@ impl SseDecode for crate::pipeline::FormatInfo {
         let mut var_genreCount = <u32>::sse_decode(deserializer);
         let mut var_mediaCount = <u32>::sse_decode(deserializer);
         let mut var_posterSamples = <Vec<String>>::sse_decode(deserializer);
-        return crate::pipeline::FormatInfo {
+        return crate::library::FormatInfo {
             name: var_name,
             path: var_path,
             genre_count: var_genreCount,
@@ -1732,14 +1927,14 @@ impl SseDecode for crate::formats::FormatOption {
     }
 }
 
-impl SseDecode for crate::pipeline::GenreInfo {
+impl SseDecode for crate::library::GenreInfo {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut var_name = <String>::sse_decode(deserializer);
         let mut var_path = <String>::sse_decode(deserializer);
         let mut var_mediaCount = <u32>::sse_decode(deserializer);
-        let mut var_mediaSamples = <Vec<crate::pipeline::MediaInfo>>::sse_decode(deserializer);
-        return crate::pipeline::GenreInfo {
+        let mut var_mediaSamples = <Vec<crate::library::MediaInfo>>::sse_decode(deserializer);
+        return crate::library::GenreInfo {
             name: var_name,
             path: var_path,
             media_count: var_mediaCount,
@@ -1748,13 +1943,13 @@ impl SseDecode for crate::pipeline::GenreInfo {
     }
 }
 
-impl SseDecode for crate::pipeline::GenrePage {
+impl SseDecode for crate::library::GenrePage {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
-        let mut var_items = <Vec<crate::pipeline::MediaInfo>>::sse_decode(deserializer);
+        let mut var_items = <Vec<crate::library::MediaInfo>>::sse_decode(deserializer);
         let mut var_total = <u32>::sse_decode(deserializer);
         let mut var_hasMore = <bool>::sse_decode(deserializer);
-        return crate::pipeline::GenrePage {
+        return crate::library::GenrePage {
             items: var_items,
             total: var_total,
             has_more: var_hasMore,
@@ -1762,13 +1957,13 @@ impl SseDecode for crate::pipeline::GenrePage {
     }
 }
 
-impl SseDecode for crate::transaction::HistoryPage {
+impl SseDecode for crate::db::transactions::HistoryPage {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
-        let mut var_items = <Vec<crate::transaction::Transaction>>::sse_decode(deserializer);
+        let mut var_items = <Vec<crate::db::transactions::Transaction>>::sse_decode(deserializer);
         let mut var_total = <u32>::sse_decode(deserializer);
         let mut var_hasMore = <bool>::sse_decode(deserializer);
-        return crate::transaction::HistoryPage {
+        return crate::db::transactions::HistoryPage {
             items: var_items,
             total: var_total,
             has_more: var_hasMore,
@@ -1802,13 +1997,13 @@ impl SseDecode for Vec<crate::api::playback_api::ExternalSubtitle> {
     }
 }
 
-impl SseDecode for Vec<crate::pipeline::FormatInfo> {
+impl SseDecode for Vec<crate::library::FormatInfo> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut len_ = <i32>::sse_decode(deserializer);
         let mut ans_ = vec![];
         for idx_ in 0..len_ {
-            ans_.push(<crate::pipeline::FormatInfo>::sse_decode(deserializer));
+            ans_.push(<crate::library::FormatInfo>::sse_decode(deserializer));
         }
         return ans_;
     }
@@ -1826,37 +2021,37 @@ impl SseDecode for Vec<crate::formats::FormatOption> {
     }
 }
 
-impl SseDecode for Vec<crate::pipeline::GenreInfo> {
+impl SseDecode for Vec<crate::library::GenreInfo> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut len_ = <i32>::sse_decode(deserializer);
         let mut ans_ = vec![];
         for idx_ in 0..len_ {
-            ans_.push(<crate::pipeline::GenreInfo>::sse_decode(deserializer));
+            ans_.push(<crate::library::GenreInfo>::sse_decode(deserializer));
         }
         return ans_;
     }
 }
 
-impl SseDecode for Vec<crate::pipeline::MediaFile> {
+impl SseDecode for Vec<crate::library::MediaFile> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut len_ = <i32>::sse_decode(deserializer);
         let mut ans_ = vec![];
         for idx_ in 0..len_ {
-            ans_.push(<crate::pipeline::MediaFile>::sse_decode(deserializer));
+            ans_.push(<crate::library::MediaFile>::sse_decode(deserializer));
         }
         return ans_;
     }
 }
 
-impl SseDecode for Vec<crate::pipeline::MediaInfo> {
+impl SseDecode for Vec<crate::library::MediaInfo> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut len_ = <i32>::sse_decode(deserializer);
         let mut ans_ = vec![];
         for idx_ in 0..len_ {
-            ans_.push(<crate::pipeline::MediaInfo>::sse_decode(deserializer));
+            ans_.push(<crate::library::MediaInfo>::sse_decode(deserializer));
         }
         return ans_;
     }
@@ -1874,13 +2069,13 @@ impl SseDecode for Vec<u8> {
     }
 }
 
-impl SseDecode for Vec<crate::metadata::TmdbMatch> {
+impl SseDecode for Vec<crate::identify::tmdb::TmdbMatch> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut len_ = <i32>::sse_decode(deserializer);
         let mut ans_ = vec![];
         for idx_ in 0..len_ {
-            ans_.push(<crate::metadata::TmdbMatch>::sse_decode(deserializer));
+            ans_.push(<crate::identify::tmdb::TmdbMatch>::sse_decode(deserializer));
         }
         return ans_;
     }
@@ -1898,25 +2093,13 @@ impl SseDecode for Vec<crate::qbittorrent::TorrentInfo> {
     }
 }
 
-impl SseDecode for Vec<crate::transaction::Transaction> {
+impl SseDecode for Vec<crate::db::transactions::Transaction> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut len_ = <i32>::sse_decode(deserializer);
         let mut ans_ = vec![];
         for idx_ in 0..len_ {
-            ans_.push(<crate::transaction::Transaction>::sse_decode(deserializer));
-        }
-        return ans_;
-    }
-}
-
-impl SseDecode for Vec<crate::transaction::WatchProgress> {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
-        let mut len_ = <i32>::sse_decode(deserializer);
-        let mut ans_ = vec![];
-        for idx_ in 0..len_ {
-            ans_.push(<crate::transaction::WatchProgress>::sse_decode(
+            ans_.push(<crate::db::transactions::Transaction>::sse_decode(
                 deserializer,
             ));
         }
@@ -1924,7 +2107,33 @@ impl SseDecode for Vec<crate::transaction::WatchProgress> {
     }
 }
 
-impl SseDecode for crate::pipeline::MediaDetail {
+impl SseDecode for Vec<crate::companion::TrashItem> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = vec![];
+        for idx_ in 0..len_ {
+            ans_.push(<crate::companion::TrashItem>::sse_decode(deserializer));
+        }
+        return ans_;
+    }
+}
+
+impl SseDecode for Vec<crate::db::watch_progress::WatchProgress> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = vec![];
+        for idx_ in 0..len_ {
+            ans_.push(<crate::db::watch_progress::WatchProgress>::sse_decode(
+                deserializer,
+            ));
+        }
+        return ans_;
+    }
+}
+
+impl SseDecode for crate::library::MediaDetail {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut var_title = <String>::sse_decode(deserializer);
@@ -1935,10 +2144,10 @@ impl SseDecode for crate::pipeline::MediaDetail {
         let mut var_format = <String>::sse_decode(deserializer);
         let mut var_genre = <String>::sse_decode(deserializer);
         let mut var_mediaType = <String>::sse_decode(deserializer);
-        let mut var_files = <Vec<crate::pipeline::MediaFile>>::sse_decode(deserializer);
+        let mut var_files = <Vec<crate::library::MediaFile>>::sse_decode(deserializer);
         let mut var_seasonCount = <u16>::sse_decode(deserializer);
         let mut var_episodeCount = <u16>::sse_decode(deserializer);
-        return crate::pipeline::MediaDetail {
+        return crate::library::MediaDetail {
             title: var_title,
             year: var_year,
             path: var_path,
@@ -1954,7 +2163,7 @@ impl SseDecode for crate::pipeline::MediaDetail {
     }
 }
 
-impl SseDecode for crate::pipeline::MediaFile {
+impl SseDecode for crate::library::MediaFile {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut var_path = <String>::sse_decode(deserializer);
@@ -1964,7 +2173,7 @@ impl SseDecode for crate::pipeline::MediaFile {
         let mut var_episodeTitle = <Option<String>>::sse_decode(deserializer);
         let mut var_sizeBytes = <u64>::sse_decode(deserializer);
         let mut var_hasSubtitles = <bool>::sse_decode(deserializer);
-        return crate::pipeline::MediaFile {
+        return crate::library::MediaFile {
             path: var_path,
             filename: var_filename,
             season: var_season,
@@ -1976,7 +2185,7 @@ impl SseDecode for crate::pipeline::MediaFile {
     }
 }
 
-impl SseDecode for crate::pipeline::MediaInfo {
+impl SseDecode for crate::library::MediaInfo {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut var_title = <String>::sse_decode(deserializer);
@@ -1986,7 +2195,7 @@ impl SseDecode for crate::pipeline::MediaInfo {
         let mut var_tmdbId = <Option<u64>>::sse_decode(deserializer);
         let mut var_format = <String>::sse_decode(deserializer);
         let mut var_genre = <String>::sse_decode(deserializer);
-        return crate::pipeline::MediaInfo {
+        return crate::library::MediaInfo {
             title: var_title,
             year: var_year,
             path: var_path,
@@ -2042,11 +2251,11 @@ impl SseDecode for Option<u64> {
     }
 }
 
-impl SseDecode for Option<crate::transaction::WatchProgress> {
+impl SseDecode for Option<crate::db::watch_progress::WatchProgress> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         if (<bool>::sse_decode(deserializer)) {
-            return Some(<crate::transaction::WatchProgress>::sse_decode(
+            return Some(<crate::db::watch_progress::WatchProgress>::sse_decode(
                 deserializer,
             ));
         } else {
@@ -2087,7 +2296,7 @@ impl SseDecode for crate::qbittorrent::QbitTestResult {
     }
 }
 
-impl SseDecode for crate::metadata::TmdbMatch {
+impl SseDecode for crate::identify::tmdb::TmdbMatch {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut var_tmdbId = <u64>::sse_decode(deserializer);
@@ -2096,7 +2305,7 @@ impl SseDecode for crate::metadata::TmdbMatch {
         let mut var_posterUrl = <Option<String>>::sse_decode(deserializer);
         let mut var_mediaType = <String>::sse_decode(deserializer);
         let mut var_overview = <Option<String>>::sse_decode(deserializer);
-        return crate::metadata::TmdbMatch {
+        return crate::identify::tmdb::TmdbMatch {
             tmdb_id: var_tmdbId,
             title: var_title,
             year: var_year,
@@ -2125,7 +2334,7 @@ impl SseDecode for crate::qbittorrent::TorrentInfo {
     }
 }
 
-impl SseDecode for crate::transaction::Transaction {
+impl SseDecode for crate::db::transactions::Transaction {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut var_id = <String>::sse_decode(deserializer);
@@ -2147,7 +2356,7 @@ impl SseDecode for crate::transaction::Transaction {
         let mut var_undone = <bool>::sse_decode(deserializer);
         let mut var_locked = <bool>::sse_decode(deserializer);
         let mut var_confidence = <f32>::sse_decode(deserializer);
-        return crate::transaction::Transaction {
+        return crate::db::transactions::Transaction {
             id: var_id,
             batch_id: var_batchId,
             source_path: var_sourcePath,
@@ -2167,6 +2376,26 @@ impl SseDecode for crate::transaction::Transaction {
             undone: var_undone,
             locked: var_locked,
             confidence: var_confidence,
+        };
+    }
+}
+
+impl SseDecode for crate::companion::TrashItem {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_id = <String>::sse_decode(deserializer);
+        let mut var_transactionId = <String>::sse_decode(deserializer);
+        let mut var_originalPath = <String>::sse_decode(deserializer);
+        let mut var_trashPath = <String>::sse_decode(deserializer);
+        let mut var_filename = <String>::sse_decode(deserializer);
+        let mut var_timestamp = <String>::sse_decode(deserializer);
+        return crate::companion::TrashItem {
+            id: var_id,
+            transaction_id: var_transactionId,
+            original_path: var_originalPath,
+            trash_path: var_trashPath,
+            filename: var_filename,
+            timestamp: var_timestamp,
         };
     }
 }
@@ -2199,13 +2428,13 @@ impl SseDecode for u8 {
     }
 }
 
-impl SseDecode for crate::transaction::UndoBatchResult {
+impl SseDecode for crate::db::transactions::UndoBatchResult {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut var_total = <u32>::sse_decode(deserializer);
         let mut var_succeeded = <u32>::sse_decode(deserializer);
         let mut var_failed = <u32>::sse_decode(deserializer);
-        return crate::transaction::UndoBatchResult {
+        return crate::db::transactions::UndoBatchResult {
             total: var_total,
             succeeded: var_succeeded,
             failed: var_failed,
@@ -2213,12 +2442,12 @@ impl SseDecode for crate::transaction::UndoBatchResult {
     }
 }
 
-impl SseDecode for crate::transaction::UndoResult {
+impl SseDecode for crate::db::transactions::UndoResult {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut var_success = <bool>::sse_decode(deserializer);
         let mut var_message = <String>::sse_decode(deserializer);
-        return crate::transaction::UndoResult {
+        return crate::db::transactions::UndoResult {
             success: var_success,
             message: var_message,
         };
@@ -2230,7 +2459,7 @@ impl SseDecode for () {
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {}
 }
 
-impl SseDecode for crate::transaction::WatchProgress {
+impl SseDecode for crate::db::watch_progress::WatchProgress {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut var_filePath = <String>::sse_decode(deserializer);
@@ -2245,7 +2474,7 @@ impl SseDecode for crate::transaction::WatchProgress {
         let mut var_episode = <Option<u32>>::sse_decode(deserializer);
         let mut var_episodeTitle = <Option<String>>::sse_decode(deserializer);
         let mut var_mediaType = <Option<String>>::sse_decode(deserializer);
-        return crate::transaction::WatchProgress {
+        return crate::db::watch_progress::WatchProgress {
             file_path: var_filePath,
             position_seconds: var_positionSeconds,
             duration_seconds: var_durationSeconds,
@@ -2293,146 +2522,159 @@ fn pde_ffi_dispatcher_primary_impl(
         3 => {
             wire__crate__api__review_api__clear_all_pending_impl(port, ptr, rust_vec_len, data_len)
         }
-        4 => wire__crate__api__playback_api__discover_external_subtitles_impl(
+        4 => wire__crate__api__trash_api__delete_trash_item_impl(port, ptr, rust_vec_len, data_len),
+        5 => wire__crate__api__playback_api__discover_external_subtitles_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        5 => wire__crate__api__pipeline_api__edit_and_relocate_impl(
+        6 => wire__crate__api__pipeline_api__edit_and_relocate_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        6 => wire__crate__api__qbit_api__get_completed_torrents_impl(
+        7 => wire__crate__api__trash_api__empty_trash_impl(port, ptr, rust_vec_len, data_len),
+        8 => wire__crate__api__config_api__ensure_library_root_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        7 => wire__crate__api__library_api__get_format_contents_impl(
+        9 => wire__crate__api__qbit_api__get_completed_torrents_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        8 => wire__crate__api__pipeline_api__get_format_options_impl(
+        10 => wire__crate__api__library_api__get_format_contents_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        9 => wire__crate__api__library_api__get_genre_contents_impl(
+        11 => wire__crate__api__pipeline_api__get_format_options_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        10 => wire__crate__api__history_api__get_history_impl(port, ptr, rust_vec_len, data_len),
-        11 => wire__crate__api__library_api__get_library_contents_impl(
+        12 => wire__crate__api__library_api__get_genre_contents_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        12 => {
+        13 => wire__crate__api__history_api__get_history_impl(port, ptr, rust_vec_len, data_len),
+        14 => wire__crate__api__library_api__get_library_contents_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        15 => {
             wire__crate__api__library_api__get_media_details_impl(port, ptr, rust_vec_len, data_len)
         }
-        13 => wire__crate__api__library_api__get_recently_added_impl(
+        16 => wire__crate__api__library_api__get_recently_added_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        14 => {
+        17 => {
             wire__crate__api__review_api__get_review_count_impl(port, ptr, rust_vec_len, data_len)
         }
-        15 => {
+        18 => {
             wire__crate__api__review_api__get_review_items_impl(port, ptr, rust_vec_len, data_len)
         }
-        17 => wire__crate__api__ai_api__init_ai_impl(port, ptr, rust_vec_len, data_len),
-        18 => wire__crate__api__simple__init_app_impl(port, ptr, rust_vec_len, data_len),
-        19 => wire__crate__api__init_api__init_db_impl(port, ptr, rust_vec_len, data_len),
-        20 => wire__crate__api__ai_api__is_ai_ready_impl(port, ptr, rust_vec_len, data_len),
-        21 => wire__crate__api__qbit_api__is_qbit_poller_running_impl(
+        19 => wire__crate__api__trash_api__get_trash_count_impl(port, ptr, rust_vec_len, data_len),
+        20 => wire__crate__api__trash_api__get_trash_items_impl(port, ptr, rust_vec_len, data_len),
+        22 => wire__crate__api__ai_api__init_ai_impl(port, ptr, rust_vec_len, data_len),
+        23 => wire__crate__api__simple__init_app_impl(port, ptr, rust_vec_len, data_len),
+        24 => wire__crate__api__init_api__init_db_impl(port, ptr, rust_vec_len, data_len),
+        25 => wire__crate__api__ai_api__is_ai_ready_impl(port, ptr, rust_vec_len, data_len),
+        26 => wire__crate__api__qbit_api__is_qbit_poller_running_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        22 => wire__crate__api__watcher_api__is_watcher_running_impl(
+        27 => wire__crate__api__watcher_api__is_watcher_running_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        23 => wire__crate__api__playback_api__load_all_progress_impl(
+        28 => wire__crate__api__playback_api__load_all_progress_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        24 => wire__crate__api__config_api__load_config_impl(port, ptr, rust_vec_len, data_len),
-        25 => wire__crate__api__playback_api__load_watch_progress_impl(
-            port,
-            ptr,
-            rust_vec_len,
-            data_len,
-        ),
-        26 => {
-            wire__crate__api__review_api__lock_transactions_impl(port, ptr, rust_vec_len, data_len)
-        }
-        27 => wire__crate__api__pipeline_api__move_library_impl(port, ptr, rust_vec_len, data_len),
-        28 => wire__crate__api__pipeline_api__open_file_impl(port, ptr, rust_vec_len, data_len),
-        29 => wire__crate__api__init_api__ping_impl(port, ptr, rust_vec_len, data_len),
-        30 => wire__crate__api__pipeline_api__process_background_impl(
+        29 => wire__crate__api__config_api__load_config_impl(port, ptr, rust_vec_len, data_len),
+        30 => wire__crate__api__playback_api__load_watch_progress_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
         31 => {
+            wire__crate__api__review_api__lock_transactions_impl(port, ptr, rust_vec_len, data_len)
+        }
+        32 => wire__crate__api__pipeline_api__move_library_impl(port, ptr, rust_vec_len, data_len),
+        33 => wire__crate__api__pipeline_api__open_file_impl(port, ptr, rust_vec_len, data_len),
+        34 => wire__crate__api__init_api__ping_impl(port, ptr, rust_vec_len, data_len),
+        35 => wire__crate__api__pipeline_api__process_background_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        36 => {
             wire__crate__api__pipeline_api__rescan_library_impl(port, ptr, rust_vec_len, data_len)
         }
-        32 => {
+        37 => {
+            wire__crate__api__trash_api__restore_trash_item_impl(port, ptr, rust_vec_len, data_len)
+        }
+        38 => {
             wire__crate__api__pipeline_api__reveal_in_finder_impl(port, ptr, rust_vec_len, data_len)
         }
-        33 => wire__crate__api__config_api__save_config_impl(port, ptr, rust_vec_len, data_len),
-        34 => wire__crate__api__playback_api__save_watch_progress_impl(
+        39 => wire__crate__api__config_api__save_config_impl(port, ptr, rust_vec_len, data_len),
+        40 => wire__crate__api__playback_api__save_watch_progress_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        35 => {
+        41 => {
             wire__crate__api__subtitle_api__search_subtitles_impl(port, ptr, rust_vec_len, data_len)
         }
-        36 => wire__crate__api__pipeline_api__search_tmdb_multi_impl(
+        42 => wire__crate__api__pipeline_api__search_tmdb_multi_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        37 => wire__crate__api__playback_api__set_file_completed_impl(
+        43 => wire__crate__api__playback_api__set_file_completed_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        38 => wire__crate__api__playback_api__set_file_unwatched_impl(
+        44 => wire__crate__api__playback_api__set_file_unwatched_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        39 => wire__crate__api__qbit_api__start_qbit_poller_impl(port, ptr, rust_vec_len, data_len),
-        40 => wire__crate__api__watcher_api__start_watcher_impl(port, ptr, rust_vec_len, data_len),
-        41 => wire__crate__api__qbit_api__stop_qbit_poller_impl(port, ptr, rust_vec_len, data_len),
-        42 => wire__crate__api__watcher_api__stop_watcher_impl(port, ptr, rust_vec_len, data_len),
-        43 => wire__crate__api__qbit_api__test_qbittorrent_impl(port, ptr, rust_vec_len, data_len),
-        44 => wire__crate__api__history_api__undo_batch_impl(port, ptr, rust_vec_len, data_len),
-        45 => {
+        45 => wire__crate__api__qbit_api__start_qbit_poller_impl(port, ptr, rust_vec_len, data_len),
+        46 => wire__crate__api__watcher_api__start_watcher_impl(port, ptr, rust_vec_len, data_len),
+        47 => wire__crate__api__qbit_api__stop_qbit_poller_impl(port, ptr, rust_vec_len, data_len),
+        48 => wire__crate__api__watcher_api__stop_watcher_impl(port, ptr, rust_vec_len, data_len),
+        49 => wire__crate__api__qbit_api__test_qbittorrent_impl(port, ptr, rust_vec_len, data_len),
+        50 => wire__crate__api__history_api__undo_batch_impl(port, ptr, rust_vec_len, data_len),
+        51 => {
             wire__crate__api__history_api__undo_transaction_impl(port, ptr, rust_vec_len, data_len)
         }
         _ => unreachable!(),
@@ -2447,7 +2689,7 @@ fn pde_ffi_dispatcher_sync_impl(
 ) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
     // Codec=Pde (Serialization + dispatch), see doc to use other codecs
     match func_id {
-        16 => wire__crate__api__simple__greet_impl(ptr, rust_vec_len, data_len),
+        21 => wire__crate__api__simple__greet_impl(ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
@@ -2550,7 +2792,7 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::playback_api::ExternalSubtitl
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
-impl flutter_rust_bridge::IntoDart for crate::pipeline::FormatInfo {
+impl flutter_rust_bridge::IntoDart for crate::library::FormatInfo {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
             self.name.into_into_dart().into_dart(),
@@ -2562,11 +2804,9 @@ impl flutter_rust_bridge::IntoDart for crate::pipeline::FormatInfo {
         .into_dart()
     }
 }
-impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::pipeline::FormatInfo {}
-impl flutter_rust_bridge::IntoIntoDart<crate::pipeline::FormatInfo>
-    for crate::pipeline::FormatInfo
-{
-    fn into_into_dart(self) -> crate::pipeline::FormatInfo {
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::library::FormatInfo {}
+impl flutter_rust_bridge::IntoIntoDart<crate::library::FormatInfo> for crate::library::FormatInfo {
+    fn into_into_dart(self) -> crate::library::FormatInfo {
         self
     }
 }
@@ -2589,7 +2829,7 @@ impl flutter_rust_bridge::IntoIntoDart<crate::formats::FormatOption>
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
-impl flutter_rust_bridge::IntoDart for crate::pipeline::GenreInfo {
+impl flutter_rust_bridge::IntoDart for crate::library::GenreInfo {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
             self.name.into_into_dart().into_dart(),
@@ -2600,14 +2840,14 @@ impl flutter_rust_bridge::IntoDart for crate::pipeline::GenreInfo {
         .into_dart()
     }
 }
-impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::pipeline::GenreInfo {}
-impl flutter_rust_bridge::IntoIntoDart<crate::pipeline::GenreInfo> for crate::pipeline::GenreInfo {
-    fn into_into_dart(self) -> crate::pipeline::GenreInfo {
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::library::GenreInfo {}
+impl flutter_rust_bridge::IntoIntoDart<crate::library::GenreInfo> for crate::library::GenreInfo {
+    fn into_into_dart(self) -> crate::library::GenreInfo {
         self
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
-impl flutter_rust_bridge::IntoDart for crate::pipeline::GenrePage {
+impl flutter_rust_bridge::IntoDart for crate::library::GenrePage {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
             self.items.into_into_dart().into_dart(),
@@ -2617,14 +2857,14 @@ impl flutter_rust_bridge::IntoDart for crate::pipeline::GenrePage {
         .into_dart()
     }
 }
-impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::pipeline::GenrePage {}
-impl flutter_rust_bridge::IntoIntoDart<crate::pipeline::GenrePage> for crate::pipeline::GenrePage {
-    fn into_into_dart(self) -> crate::pipeline::GenrePage {
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::library::GenrePage {}
+impl flutter_rust_bridge::IntoIntoDart<crate::library::GenrePage> for crate::library::GenrePage {
+    fn into_into_dart(self) -> crate::library::GenrePage {
         self
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
-impl flutter_rust_bridge::IntoDart for crate::transaction::HistoryPage {
+impl flutter_rust_bridge::IntoDart for crate::db::transactions::HistoryPage {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
             self.items.into_into_dart().into_dart(),
@@ -2635,18 +2875,18 @@ impl flutter_rust_bridge::IntoDart for crate::transaction::HistoryPage {
     }
 }
 impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
-    for crate::transaction::HistoryPage
+    for crate::db::transactions::HistoryPage
 {
 }
-impl flutter_rust_bridge::IntoIntoDart<crate::transaction::HistoryPage>
-    for crate::transaction::HistoryPage
+impl flutter_rust_bridge::IntoIntoDart<crate::db::transactions::HistoryPage>
+    for crate::db::transactions::HistoryPage
 {
-    fn into_into_dart(self) -> crate::transaction::HistoryPage {
+    fn into_into_dart(self) -> crate::db::transactions::HistoryPage {
         self
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
-impl flutter_rust_bridge::IntoDart for crate::pipeline::MediaDetail {
+impl flutter_rust_bridge::IntoDart for crate::library::MediaDetail {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
             self.title.into_into_dart().into_dart(),
@@ -2664,16 +2904,16 @@ impl flutter_rust_bridge::IntoDart for crate::pipeline::MediaDetail {
         .into_dart()
     }
 }
-impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::pipeline::MediaDetail {}
-impl flutter_rust_bridge::IntoIntoDart<crate::pipeline::MediaDetail>
-    for crate::pipeline::MediaDetail
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::library::MediaDetail {}
+impl flutter_rust_bridge::IntoIntoDart<crate::library::MediaDetail>
+    for crate::library::MediaDetail
 {
-    fn into_into_dart(self) -> crate::pipeline::MediaDetail {
+    fn into_into_dart(self) -> crate::library::MediaDetail {
         self
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
-impl flutter_rust_bridge::IntoDart for crate::pipeline::MediaFile {
+impl flutter_rust_bridge::IntoDart for crate::library::MediaFile {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
             self.path.into_into_dart().into_dart(),
@@ -2687,14 +2927,14 @@ impl flutter_rust_bridge::IntoDart for crate::pipeline::MediaFile {
         .into_dart()
     }
 }
-impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::pipeline::MediaFile {}
-impl flutter_rust_bridge::IntoIntoDart<crate::pipeline::MediaFile> for crate::pipeline::MediaFile {
-    fn into_into_dart(self) -> crate::pipeline::MediaFile {
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::library::MediaFile {}
+impl flutter_rust_bridge::IntoIntoDart<crate::library::MediaFile> for crate::library::MediaFile {
+    fn into_into_dart(self) -> crate::library::MediaFile {
         self
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
-impl flutter_rust_bridge::IntoDart for crate::pipeline::MediaInfo {
+impl flutter_rust_bridge::IntoDart for crate::library::MediaInfo {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
             self.title.into_into_dart().into_dart(),
@@ -2708,9 +2948,9 @@ impl flutter_rust_bridge::IntoDart for crate::pipeline::MediaInfo {
         .into_dart()
     }
 }
-impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::pipeline::MediaInfo {}
-impl flutter_rust_bridge::IntoIntoDart<crate::pipeline::MediaInfo> for crate::pipeline::MediaInfo {
-    fn into_into_dart(self) -> crate::pipeline::MediaInfo {
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::library::MediaInfo {}
+impl flutter_rust_bridge::IntoIntoDart<crate::library::MediaInfo> for crate::library::MediaInfo {
+    fn into_into_dart(self) -> crate::library::MediaInfo {
         self
     }
 }
@@ -2756,7 +2996,7 @@ impl flutter_rust_bridge::IntoIntoDart<crate::qbittorrent::QbitTestResult>
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
-impl flutter_rust_bridge::IntoDart for crate::metadata::TmdbMatch {
+impl flutter_rust_bridge::IntoDart for crate::identify::tmdb::TmdbMatch {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
             self.tmdb_id.into_into_dart().into_dart(),
@@ -2769,9 +3009,14 @@ impl flutter_rust_bridge::IntoDart for crate::metadata::TmdbMatch {
         .into_dart()
     }
 }
-impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::metadata::TmdbMatch {}
-impl flutter_rust_bridge::IntoIntoDart<crate::metadata::TmdbMatch> for crate::metadata::TmdbMatch {
-    fn into_into_dart(self) -> crate::metadata::TmdbMatch {
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::identify::tmdb::TmdbMatch
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::identify::tmdb::TmdbMatch>
+    for crate::identify::tmdb::TmdbMatch
+{
+    fn into_into_dart(self) -> crate::identify::tmdb::TmdbMatch {
         self
     }
 }
@@ -2800,7 +3045,7 @@ impl flutter_rust_bridge::IntoIntoDart<crate::qbittorrent::TorrentInfo>
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
-impl flutter_rust_bridge::IntoDart for crate::transaction::Transaction {
+impl flutter_rust_bridge::IntoDart for crate::db::transactions::Transaction {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
             self.id.into_into_dart().into_dart(),
@@ -2827,18 +3072,40 @@ impl flutter_rust_bridge::IntoDart for crate::transaction::Transaction {
     }
 }
 impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
-    for crate::transaction::Transaction
+    for crate::db::transactions::Transaction
 {
 }
-impl flutter_rust_bridge::IntoIntoDart<crate::transaction::Transaction>
-    for crate::transaction::Transaction
+impl flutter_rust_bridge::IntoIntoDart<crate::db::transactions::Transaction>
+    for crate::db::transactions::Transaction
 {
-    fn into_into_dart(self) -> crate::transaction::Transaction {
+    fn into_into_dart(self) -> crate::db::transactions::Transaction {
         self
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
-impl flutter_rust_bridge::IntoDart for crate::transaction::UndoBatchResult {
+impl flutter_rust_bridge::IntoDart for crate::companion::TrashItem {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.id.into_into_dart().into_dart(),
+            self.transaction_id.into_into_dart().into_dart(),
+            self.original_path.into_into_dart().into_dart(),
+            self.trash_path.into_into_dart().into_dart(),
+            self.filename.into_into_dart().into_dart(),
+            self.timestamp.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::companion::TrashItem {}
+impl flutter_rust_bridge::IntoIntoDart<crate::companion::TrashItem>
+    for crate::companion::TrashItem
+{
+    fn into_into_dart(self) -> crate::companion::TrashItem {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::db::transactions::UndoBatchResult {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
             self.total.into_into_dart().into_dart(),
@@ -2849,18 +3116,18 @@ impl flutter_rust_bridge::IntoDart for crate::transaction::UndoBatchResult {
     }
 }
 impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
-    for crate::transaction::UndoBatchResult
+    for crate::db::transactions::UndoBatchResult
 {
 }
-impl flutter_rust_bridge::IntoIntoDart<crate::transaction::UndoBatchResult>
-    for crate::transaction::UndoBatchResult
+impl flutter_rust_bridge::IntoIntoDart<crate::db::transactions::UndoBatchResult>
+    for crate::db::transactions::UndoBatchResult
 {
-    fn into_into_dart(self) -> crate::transaction::UndoBatchResult {
+    fn into_into_dart(self) -> crate::db::transactions::UndoBatchResult {
         self
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
-impl flutter_rust_bridge::IntoDart for crate::transaction::UndoResult {
+impl flutter_rust_bridge::IntoDart for crate::db::transactions::UndoResult {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
             self.success.into_into_dart().into_dart(),
@@ -2870,18 +3137,18 @@ impl flutter_rust_bridge::IntoDart for crate::transaction::UndoResult {
     }
 }
 impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
-    for crate::transaction::UndoResult
+    for crate::db::transactions::UndoResult
 {
 }
-impl flutter_rust_bridge::IntoIntoDart<crate::transaction::UndoResult>
-    for crate::transaction::UndoResult
+impl flutter_rust_bridge::IntoIntoDart<crate::db::transactions::UndoResult>
+    for crate::db::transactions::UndoResult
 {
-    fn into_into_dart(self) -> crate::transaction::UndoResult {
+    fn into_into_dart(self) -> crate::db::transactions::UndoResult {
         self
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
-impl flutter_rust_bridge::IntoDart for crate::transaction::WatchProgress {
+impl flutter_rust_bridge::IntoDart for crate::db::watch_progress::WatchProgress {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
             self.file_path.into_into_dart().into_dart(),
@@ -2901,13 +3168,13 @@ impl flutter_rust_bridge::IntoDart for crate::transaction::WatchProgress {
     }
 }
 impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
-    for crate::transaction::WatchProgress
+    for crate::db::watch_progress::WatchProgress
 {
 }
-impl flutter_rust_bridge::IntoIntoDart<crate::transaction::WatchProgress>
-    for crate::transaction::WatchProgress
+impl flutter_rust_bridge::IntoIntoDart<crate::db::watch_progress::WatchProgress>
+    for crate::db::watch_progress::WatchProgress
 {
-    fn into_into_dart(self) -> crate::transaction::WatchProgress {
+    fn into_into_dart(self) -> crate::db::watch_progress::WatchProgress {
         self
     }
 }
@@ -3005,7 +3272,7 @@ impl SseEncode for f64 {
     }
 }
 
-impl SseEncode for crate::pipeline::FormatInfo {
+impl SseEncode for crate::library::FormatInfo {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <String>::sse_encode(self.name, serializer);
@@ -3024,29 +3291,29 @@ impl SseEncode for crate::formats::FormatOption {
     }
 }
 
-impl SseEncode for crate::pipeline::GenreInfo {
+impl SseEncode for crate::library::GenreInfo {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <String>::sse_encode(self.name, serializer);
         <String>::sse_encode(self.path, serializer);
         <u32>::sse_encode(self.media_count, serializer);
-        <Vec<crate::pipeline::MediaInfo>>::sse_encode(self.media_samples, serializer);
+        <Vec<crate::library::MediaInfo>>::sse_encode(self.media_samples, serializer);
     }
 }
 
-impl SseEncode for crate::pipeline::GenrePage {
+impl SseEncode for crate::library::GenrePage {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
-        <Vec<crate::pipeline::MediaInfo>>::sse_encode(self.items, serializer);
+        <Vec<crate::library::MediaInfo>>::sse_encode(self.items, serializer);
         <u32>::sse_encode(self.total, serializer);
         <bool>::sse_encode(self.has_more, serializer);
     }
 }
 
-impl SseEncode for crate::transaction::HistoryPage {
+impl SseEncode for crate::db::transactions::HistoryPage {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
-        <Vec<crate::transaction::Transaction>>::sse_encode(self.items, serializer);
+        <Vec<crate::db::transactions::Transaction>>::sse_encode(self.items, serializer);
         <u32>::sse_encode(self.total, serializer);
         <bool>::sse_encode(self.has_more, serializer);
     }
@@ -3072,12 +3339,12 @@ impl SseEncode for Vec<crate::api::playback_api::ExternalSubtitle> {
     }
 }
 
-impl SseEncode for Vec<crate::pipeline::FormatInfo> {
+impl SseEncode for Vec<crate::library::FormatInfo> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <i32>::sse_encode(self.len() as _, serializer);
         for item in self {
-            <crate::pipeline::FormatInfo>::sse_encode(item, serializer);
+            <crate::library::FormatInfo>::sse_encode(item, serializer);
         }
     }
 }
@@ -3092,32 +3359,32 @@ impl SseEncode for Vec<crate::formats::FormatOption> {
     }
 }
 
-impl SseEncode for Vec<crate::pipeline::GenreInfo> {
+impl SseEncode for Vec<crate::library::GenreInfo> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <i32>::sse_encode(self.len() as _, serializer);
         for item in self {
-            <crate::pipeline::GenreInfo>::sse_encode(item, serializer);
+            <crate::library::GenreInfo>::sse_encode(item, serializer);
         }
     }
 }
 
-impl SseEncode for Vec<crate::pipeline::MediaFile> {
+impl SseEncode for Vec<crate::library::MediaFile> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <i32>::sse_encode(self.len() as _, serializer);
         for item in self {
-            <crate::pipeline::MediaFile>::sse_encode(item, serializer);
+            <crate::library::MediaFile>::sse_encode(item, serializer);
         }
     }
 }
 
-impl SseEncode for Vec<crate::pipeline::MediaInfo> {
+impl SseEncode for Vec<crate::library::MediaInfo> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <i32>::sse_encode(self.len() as _, serializer);
         for item in self {
-            <crate::pipeline::MediaInfo>::sse_encode(item, serializer);
+            <crate::library::MediaInfo>::sse_encode(item, serializer);
         }
     }
 }
@@ -3132,12 +3399,12 @@ impl SseEncode for Vec<u8> {
     }
 }
 
-impl SseEncode for Vec<crate::metadata::TmdbMatch> {
+impl SseEncode for Vec<crate::identify::tmdb::TmdbMatch> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <i32>::sse_encode(self.len() as _, serializer);
         for item in self {
-            <crate::metadata::TmdbMatch>::sse_encode(item, serializer);
+            <crate::identify::tmdb::TmdbMatch>::sse_encode(item, serializer);
         }
     }
 }
@@ -3152,27 +3419,37 @@ impl SseEncode for Vec<crate::qbittorrent::TorrentInfo> {
     }
 }
 
-impl SseEncode for Vec<crate::transaction::Transaction> {
+impl SseEncode for Vec<crate::db::transactions::Transaction> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <i32>::sse_encode(self.len() as _, serializer);
         for item in self {
-            <crate::transaction::Transaction>::sse_encode(item, serializer);
+            <crate::db::transactions::Transaction>::sse_encode(item, serializer);
         }
     }
 }
 
-impl SseEncode for Vec<crate::transaction::WatchProgress> {
+impl SseEncode for Vec<crate::companion::TrashItem> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <i32>::sse_encode(self.len() as _, serializer);
         for item in self {
-            <crate::transaction::WatchProgress>::sse_encode(item, serializer);
+            <crate::companion::TrashItem>::sse_encode(item, serializer);
         }
     }
 }
 
-impl SseEncode for crate::pipeline::MediaDetail {
+impl SseEncode for Vec<crate::db::watch_progress::WatchProgress> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <crate::db::watch_progress::WatchProgress>::sse_encode(item, serializer);
+        }
+    }
+}
+
+impl SseEncode for crate::library::MediaDetail {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <String>::sse_encode(self.title, serializer);
@@ -3183,13 +3460,13 @@ impl SseEncode for crate::pipeline::MediaDetail {
         <String>::sse_encode(self.format, serializer);
         <String>::sse_encode(self.genre, serializer);
         <String>::sse_encode(self.media_type, serializer);
-        <Vec<crate::pipeline::MediaFile>>::sse_encode(self.files, serializer);
+        <Vec<crate::library::MediaFile>>::sse_encode(self.files, serializer);
         <u16>::sse_encode(self.season_count, serializer);
         <u16>::sse_encode(self.episode_count, serializer);
     }
 }
 
-impl SseEncode for crate::pipeline::MediaFile {
+impl SseEncode for crate::library::MediaFile {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <String>::sse_encode(self.path, serializer);
@@ -3202,7 +3479,7 @@ impl SseEncode for crate::pipeline::MediaFile {
     }
 }
 
-impl SseEncode for crate::pipeline::MediaInfo {
+impl SseEncode for crate::library::MediaInfo {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <String>::sse_encode(self.title, serializer);
@@ -3255,12 +3532,12 @@ impl SseEncode for Option<u64> {
     }
 }
 
-impl SseEncode for Option<crate::transaction::WatchProgress> {
+impl SseEncode for Option<crate::db::watch_progress::WatchProgress> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <bool>::sse_encode(self.is_some(), serializer);
         if let Some(value) = self {
-            <crate::transaction::WatchProgress>::sse_encode(value, serializer);
+            <crate::db::watch_progress::WatchProgress>::sse_encode(value, serializer);
         }
     }
 }
@@ -3285,7 +3562,7 @@ impl SseEncode for crate::qbittorrent::QbitTestResult {
     }
 }
 
-impl SseEncode for crate::metadata::TmdbMatch {
+impl SseEncode for crate::identify::tmdb::TmdbMatch {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <u64>::sse_encode(self.tmdb_id, serializer);
@@ -3308,7 +3585,7 @@ impl SseEncode for crate::qbittorrent::TorrentInfo {
     }
 }
 
-impl SseEncode for crate::transaction::Transaction {
+impl SseEncode for crate::db::transactions::Transaction {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <String>::sse_encode(self.id, serializer);
@@ -3330,6 +3607,18 @@ impl SseEncode for crate::transaction::Transaction {
         <bool>::sse_encode(self.undone, serializer);
         <bool>::sse_encode(self.locked, serializer);
         <f32>::sse_encode(self.confidence, serializer);
+    }
+}
+
+impl SseEncode for crate::companion::TrashItem {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.id, serializer);
+        <String>::sse_encode(self.transaction_id, serializer);
+        <String>::sse_encode(self.original_path, serializer);
+        <String>::sse_encode(self.trash_path, serializer);
+        <String>::sse_encode(self.filename, serializer);
+        <String>::sse_encode(self.timestamp, serializer);
     }
 }
 
@@ -3361,7 +3650,7 @@ impl SseEncode for u8 {
     }
 }
 
-impl SseEncode for crate::transaction::UndoBatchResult {
+impl SseEncode for crate::db::transactions::UndoBatchResult {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <u32>::sse_encode(self.total, serializer);
@@ -3370,7 +3659,7 @@ impl SseEncode for crate::transaction::UndoBatchResult {
     }
 }
 
-impl SseEncode for crate::transaction::UndoResult {
+impl SseEncode for crate::db::transactions::UndoResult {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <bool>::sse_encode(self.success, serializer);
@@ -3383,7 +3672,7 @@ impl SseEncode for () {
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {}
 }
 
-impl SseEncode for crate::transaction::WatchProgress {
+impl SseEncode for crate::db::watch_progress::WatchProgress {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <String>::sse_encode(self.file_path, serializer);

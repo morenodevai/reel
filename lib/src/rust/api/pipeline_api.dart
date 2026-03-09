@@ -3,11 +3,11 @@
 
 // ignore_for_file: invalid_use_of_internal_member, unused_import, unnecessary_import
 
+import '../db/transactions.dart';
 import '../formats.dart';
 import '../frb_generated.dart';
-import '../metadata.dart';
+import '../identify/tmdb.dart';
 import '../pipeline.dart';
-import '../transaction.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
 // These functions are ignored because they are not marked as `pub`: `common_parent_of`

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:reel/src/rust/pipeline.dart';
+import 'package:reel/src/rust/library.dart';
 import 'package:reel/components/media_card.dart';
 import 'package:reel/components/dock_row.dart';
 import 'package:reel/theme/app_theme.dart';

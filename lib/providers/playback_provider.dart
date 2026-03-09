@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:window_manager/window_manager.dart';
-import 'package:reel/src/rust/pipeline.dart';
+import 'package:reel/src/rust/library.dart';
 import 'package:reel/src/rust/api/playback_api.dart' as playback_api;
 
 // Re-export state types so existing imports keep working.

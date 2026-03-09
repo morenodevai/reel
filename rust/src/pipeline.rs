@@ -1,4 +1,5 @@
 use crate::classifier;
+use crate::companion;
 use crate::config::Config;
 use crate::junk;
 use crate::metadata;
@@ -48,6 +49,10 @@ pub struct AnalysisResult {
     pub poster_url: Option<String>,
     pub subtitle_files: Vec<String>,
     pub junk_files: Vec<String>,
+    /// Image files in a dedicated movie folder — candidates for trash.
+    pub companion_images: Vec<String>,
+    /// True if the source folder contains exactly one video (dedicated folder).
+    pub is_dedicated_folder: bool,
     pub confidence: f32,
 }
 
@@ -517,8 +522,12 @@ fn analyze_single_file(
         Vec::new()
     };
 
-    log::info!("[analyze] Result: '{}' ({:?}) → {} | subs={} junk={}",
-        final_title, final_year, &dest_path, subtitle_files.len(), junk_files.len());
+    // 9. Scan for companion files (images in dedicated movie folders)
+    let companion_scan = companion::scan_companions(video_path);
+
+    log::info!("[analyze] Result: '{}' ({:?}) → {} | subs={} junk={} companions={} dedicated={}",
+        final_title, final_year, &dest_path, subtitle_files.len(), junk_files.len(),
+        companion_scan.image_files.len(), companion_scan.is_dedicated_folder);
 
     AnalysisResult {
         source_path: video_path.to_string_lossy().to_string(),
@@ -535,6 +544,8 @@ fn analyze_single_file(
         poster_url,
         subtitle_files,
         junk_files,
+        companion_images: companion_scan.image_files,
+        is_dedicated_folder: companion_scan.is_dedicated_folder,
         confidence: id_confidence,
     }
 }
@@ -642,6 +653,8 @@ pub async fn process_files(
     let mut errors = Vec::new();
     let total = analyses.len() as u32;
 
+    let library_path = config.library_path.clone().unwrap_or_default();
+
     for analysis in &analyses {
         if CANCEL_FLAG.load(Ordering::Relaxed) {
             break;
@@ -654,9 +667,10 @@ pub async fn process_files(
         let subtitle_languages = config.subtitle_languages.clone();
         let opensubs_key = config.opensubs_api_key.clone();
         let root = cleanup_root.to_string();
+        let library = library_path.clone();
 
         match tokio::task::spawn_blocking(move || {
-            process_single_file(&analysis_clone, &batch_id, auto_download_subs, &subtitle_languages, &opensubs_key, &root)
+            process_single_file(&analysis_clone, &batch_id, auto_download_subs, &subtitle_languages, &opensubs_key, &root, &library)
         })
         .await
         {
@@ -698,8 +712,9 @@ pub fn process_single_file_pub(
     subtitle_languages: &[String],
     opensubs_key: &str,
     cleanup_root: &str,
+    library_path: &str,
 ) -> Result<(), String> {
-    process_single_file(analysis, batch_id, auto_download_subs, subtitle_languages, opensubs_key, cleanup_root)
+    process_single_file(analysis, batch_id, auto_download_subs, subtitle_languages, opensubs_key, cleanup_root, library_path)
 }
 
 fn process_single_file(
@@ -709,6 +724,7 @@ fn process_single_file(
     subtitle_languages: &[String],
     opensubs_key: &str,
     cleanup_root: &str,
+    library_path: &str,
 ) -> Result<(), String> {
     log::info!("[process] === Processing: {} → {} ===", analysis.source_path, analysis.dest_path);
 
@@ -859,7 +875,16 @@ fn process_single_file(
         }
     }
 
-    // 8. Clean empty source folder (trash it so user can undo)
+    // 8. Trash companion images (only in dedicated movie folders)
+    if analysis.is_dedicated_folder && !library_path.is_empty() {
+        for img_path in &analysis.companion_images {
+            if let Err(e) = companion::trash_companion(img_path, &txn_id, library_path) {
+                log::warn!("[process] Failed to trash companion {}: {}", img_path, e);
+            }
+        }
+    }
+
+    // 8.5. Clean empty source folder
     if let Some(parent) = source_path.parent() {
         clean_empty_dirs(parent, source_root);
     }

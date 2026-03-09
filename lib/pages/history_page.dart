@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:reel/src/rust/transaction.dart';
+import 'package:reel/src/rust/db/transactions.dart';
 import 'package:reel/src/rust/api/history_api.dart' as history_api;
 import 'package:reel/src/rust/api/review_api.dart' as review_api;
 import 'package:reel/providers/toast_provider.dart';
@@ -9,6 +9,7 @@ import 'package:reel/providers/library_provider.dart';
 import 'package:reel/components/empty_state.dart';
 import 'package:reel/components/loading_skeleton.dart';
 import 'package:reel/theme/app_theme.dart';
+import 'package:reel/utils/time_format.dart';
 
 class HistoryPageWidget extends ConsumerStatefulWidget {
   const HistoryPageWidget({super.key});
@@ -269,7 +270,7 @@ class _HistoryItemRow extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  _timeAgo(transaction.timestamp),
+                  timeAgo(transaction.timestamp),
                   style: const TextStyle(
                     fontSize: 10,
                     color: AppColors.textQuaternary,
@@ -315,21 +316,6 @@ class _HistoryItemRow extends StatelessWidget {
     );
   }
 
-  static String _timeAgo(String timestamp) {
-    try {
-      final then = DateTime.parse(timestamp);
-      final now = DateTime.now();
-      final diff = now.difference(then);
-
-      if (diff.inMinutes < 1) return 'Just now';
-      if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
-      if (diff.inHours < 24) return '${diff.inHours}h ago';
-      if (diff.inDays < 7) return '${diff.inDays}d ago';
-      return '${then.month}/${then.day}/${then.year}';
-    } catch (_) {
-      return timestamp;
-    }
-  }
 }
 
 class _BulkButton extends StatelessWidget {

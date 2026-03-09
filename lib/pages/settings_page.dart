@@ -8,7 +8,9 @@ import 'package:reel/src/rust/config.dart';
 import 'package:reel/src/rust/api/ai_api.dart' as ai_api;
 import 'package:reel/src/rust/api/qbit_api.dart' as qbit_api;
 import 'package:reel/src/rust/api/pipeline_api.dart' as pipeline_api;
+import 'package:reel/src/rust/api/config_api.dart' as config_api;
 import 'package:reel/providers/config_provider.dart';
+import 'package:reel/providers/toast_provider.dart';
 import 'package:reel/providers/qbit_provider.dart';
 import 'package:reel/pages/settings_widgets.dart';
 import 'package:reel/theme/app_theme.dart';
@@ -444,10 +446,20 @@ class _SettingsPageWidgetState extends ConsumerState<SettingsPageWidget> {
 
   Future<void> _pickLibraryFolder() async {
     final result = await FilePicker.platform.getDirectoryPath(
-      dialogTitle: 'Choose library folder',
+      dialogTitle: 'Choose where to create your Reel library',
     );
     if (result != null) {
-      _updateConfig((c) => _copyConfig(c, libraryPath: result));
+      try {
+        final libraryRoot = await config_api.ensureLibraryRoot(parent: result);
+        _updateConfig((c) => _copyConfig(c, libraryPath: libraryRoot));
+      } catch (e) {
+        if (mounted) {
+          ref.read(toastProvider.notifier).show(
+            'Failed to create library: $e',
+            type: ToastType.error,
+          );
+        }
+      }
     }
   }
 

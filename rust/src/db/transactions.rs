@@ -1,5 +1,6 @@
 /// Transaction CRUD — record, query, undo, review operations.
 
+use crate::companion;
 use crate::config;
 use crate::db::with_connection;
 use crate::error::AppResult;
@@ -185,6 +186,13 @@ pub fn undo_transaction(id: &str) -> AppResult<UndoResult> {
             }
         }
 
+        // Canonicalize BEFORE the rename — dest_path won't exist after the move.
+        let library_root = config::load_config()
+            .ok()
+            .and_then(|c| c.library_path)
+            .and_then(|p| fs::canonicalize(&p).ok());
+        let dest_canonical = fs::canonicalize(dest_path).ok();
+
         let source_path = Path::new(&txn.source_path);
         if let Some(parent) = source_path.parent() {
             fs::create_dir_all(parent)?;
@@ -207,12 +215,14 @@ pub fn undo_transaction(id: &str) -> AppResult<UndoResult> {
             }
         }
 
-        let library_root = config::load_config()
-            .ok()
-            .and_then(|c| c.library_path)
-            .map(std::path::PathBuf::from);
-        if let Some(root) = library_root.as_deref() {
-            clean_empty_parents(dest_path, root);
+        // Restore trashed companion files back to original locations
+        if let Err(e) = companion::restore_companions(id) {
+            log::warn!("[undo] Failed to restore companions for {}: {}", id, e);
+        }
+
+        // Clean empty library folders up to the library root.
+        if let (Some(root), Some(dest_c)) = (library_root.as_deref(), dest_canonical.as_deref()) {
+            clean_empty_parents(dest_c, root);
         }
 
         conn.execute("UPDATE transactions SET undone = 1 WHERE id = ?1", params![id])?;

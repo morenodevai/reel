@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:reel/src/rust/pipeline.dart';
+import 'package:reel/src/rust/library.dart';
 import 'package:reel/src/rust/api/library_api.dart' as library_api;
 import 'package:reel/providers/navigation_provider.dart';
 import 'package:reel/components/genre_row.dart';

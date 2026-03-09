@@ -11,3 +11,9 @@ pub fn load_config() -> Result<config::Config, String> {
 pub fn save_config(cfg: config::Config) -> Result<(), String> {
     config::save_config(&cfg)
 }
+
+/// Create a "Reel" root folder inside the given parent directory.
+/// Returns the full path to the library root.
+pub fn ensure_library_root(parent: String) -> Result<String, String> {
+    config::ensure_library_root(&parent)
+}

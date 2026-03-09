@@ -17,6 +17,7 @@ import 'package:reel/src/rust/config.dart';
 import 'package:reel/providers/playback_provider.dart';
 import 'package:reel/src/rust/api/pipeline_api.dart' as pipeline_api;
 import 'package:reel/src/rust/api/library_api.dart' as library_api;
+import 'package:reel/src/rust/api/config_api.dart' as config_api;
 
 class FormatsPageWidget extends ConsumerWidget {
   const FormatsPageWidget({super.key});
@@ -228,24 +229,32 @@ class _NoLibraryState extends ConsumerWidget {
 
   Future<void> _pickLibraryFolder(WidgetRef ref) async {
     final result = await FilePicker.platform.getDirectoryPath(
-      dialogTitle: 'Choose library folder',
+      dialogTitle: 'Choose where to create your Reel library',
     );
     if (result != null) {
-      ref.read(configProvider.notifier).updateConfig((cfg) {
-        return Config(
-          libraryPath: result,
-          watchPath: cfg.watchPath,
-          tmdbApiKey: cfg.tmdbApiKey,
-          opensubsApiKey: cfg.opensubsApiKey,
-          tvdbApiKey: cfg.tvdbApiKey,
-          subtitleLanguages: cfg.subtitleLanguages,
-          autoDownloadSubs: cfg.autoDownloadSubs,
-          qbittorrent: cfg.qbittorrent,
-          qbitEnabled: cfg.qbitEnabled,
-          watcherEnabled: cfg.watcherEnabled,
-          theme: cfg.theme,
+      try {
+        final libraryRoot = await config_api.ensureLibraryRoot(parent: result);
+        ref.read(configProvider.notifier).updateConfig((cfg) {
+          return Config(
+            libraryPath: libraryRoot,
+            watchPath: cfg.watchPath,
+            tmdbApiKey: cfg.tmdbApiKey,
+            opensubsApiKey: cfg.opensubsApiKey,
+            tvdbApiKey: cfg.tvdbApiKey,
+            subtitleLanguages: cfg.subtitleLanguages,
+            autoDownloadSubs: cfg.autoDownloadSubs,
+            qbittorrent: cfg.qbittorrent,
+            qbitEnabled: cfg.qbitEnabled,
+            watcherEnabled: cfg.watcherEnabled,
+            theme: cfg.theme,
+          );
+        });
+      } catch (e) {
+        ref.read(toastProvider.notifier).show(
+          'Failed to create library: $e',
+          type: ToastType.error,
         );
-      });
+      }
     }
   }
 }

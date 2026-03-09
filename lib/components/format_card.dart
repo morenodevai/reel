@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:reel/src/rust/pipeline.dart';
+import 'package:reel/src/rust/library.dart';
 import 'package:reel/theme/app_theme.dart';
 
 /// Card for a format (Movies, Shows, Anime, etc.) with icon, name, counts, and poster samples.

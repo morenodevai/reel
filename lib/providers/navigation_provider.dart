@@ -1,5 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:reel/src/rust/pipeline.dart';
+import 'package:reel/src/rust/library.dart';
 
 /// Represents a page in the navigation stack.
 sealed class AppPage {
@@ -38,6 +38,10 @@ class SettingsAppPage extends AppPage {
 
 class HistoryAppPage extends AppPage {
   const HistoryAppPage();
+}
+
+class TrashAppPage extends AppPage {
+  const TrashAppPage();
 }
 
 class ReviewAppPage extends AppPage {
@@ -89,6 +93,10 @@ class NavigationNotifier extends Notifier<List<AppPage>> {
     push(const HistoryAppPage());
   }
 
+  void goToTrash() {
+    push(const TrashAppPage());
+  }
+
   void goToReview(List<String> batchIds) {
     push(ReviewAppPage(batchIds: batchIds));
   }
@@ -127,6 +135,7 @@ class NavigationNotifier extends Notifier<List<AppPage>> {
       MediaDetailAppPage() => page.media.title,
       SettingsAppPage() => 'Settings',
       HistoryAppPage() => 'History',
+      TrashAppPage() => 'Trash',
       ReviewAppPage() => 'Review',
       PlayerAppPage() => page.detail.title,
     };

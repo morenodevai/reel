@@ -14,3 +14,8 @@ Future<Config> loadConfig() =>
 /// Save config to disk.
 Future<void> saveConfig({required Config cfg}) =>
     RustLib.instance.api.crateApiConfigApiSaveConfig(cfg: cfg);
+
+/// Create a "Reel" root folder inside the given parent directory.
+/// Returns the full path to the library root.
+Future<String> ensureLibraryRoot({required String parent}) =>
+    RustLib.instance.api.crateApiConfigApiEnsureLibraryRoot(parent: parent);

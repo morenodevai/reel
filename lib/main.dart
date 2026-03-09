@@ -11,6 +11,7 @@ import 'package:reel/theme/app_theme.dart';
 import 'package:reel/providers/navigation_provider.dart';
 import 'package:reel/providers/config_provider.dart';
 import 'package:reel/providers/qbit_provider.dart';
+import 'package:reel/providers/trash_provider.dart';
 import 'package:reel/components/title_bar.dart';
 import 'package:reel/components/toast_overlay.dart';
 import 'package:reel/pages/formats_page.dart';
@@ -21,6 +22,7 @@ import 'package:reel/pages/history_page.dart';
 import 'package:reel/pages/review_page.dart';
 import 'package:reel/pages/media_detail_page.dart';
 import 'package:reel/pages/player_page.dart';
+import 'package:reel/pages/trash_page.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -120,7 +122,10 @@ class _AppShellState extends ConsumerState<AppShell> {
           Column(
             children: [
               // Custom title bar (hidden during video playback)
-              if (!isPlayer) const TitleBar(),
+              if (!isPlayer)
+                TitleBar(
+                  trashCount: ref.watch(trashCountProvider).value ?? 0,
+                ),
 
               // Page content with animated transitions
               Expanded(
@@ -172,6 +177,7 @@ class _AppShellState extends ConsumerState<AppShell> {
       MediaDetailAppPage() => 'detail:${page.media.path}',
       SettingsAppPage() => 'settings',
       HistoryAppPage() => 'history',
+      TrashAppPage() => 'trash',
       ReviewAppPage() => 'review:${page.batchIds.join(",")}',
       PlayerAppPage() => 'player:${page.file.path}',
     };
@@ -188,6 +194,7 @@ class _AppShellState extends ConsumerState<AppShell> {
       MediaDetailAppPage() => MediaDetailPageWidget(media: page.media),
       SettingsAppPage() => const SettingsPageWidget(),
       HistoryAppPage() => const HistoryPageWidget(),
+      TrashAppPage() => const TrashPageWidget(),
       ReviewAppPage() => ReviewPageWidget(batchIds: page.batchIds),
       PlayerAppPage() => PlayerPageWidget(
           detail: page.detail,

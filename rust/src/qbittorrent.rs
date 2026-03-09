@@ -337,6 +337,7 @@ pub fn import_torrent(hash: &str, config: &Config) -> Result<pipeline::BatchResu
             &config.subtitle_languages,
             &config.opensubs_api_key,
             &cleanup_root,
+            library,
         ) {
             Ok(()) => succeeded += 1,
             Err(e) => {
