@@ -70,7 +70,7 @@ pub fn discover_external_subtitles(video_path: String) -> Result<Vec<ExternalSub
         .and_then(|s| s.to_str())
         .unwrap_or("");
 
-    let sub_paths = subtitles::find_subtitles(
+    let sub_paths = subtitles::find_subtitles_dedicated(
         dir.to_str().unwrap_or(""),
         stem,
     );

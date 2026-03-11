@@ -207,5 +207,5 @@ pub fn get_ffmpeg_path() -> Option<std::path::PathBuf> {
 }
 
 // Public API — delegates to submodules.
-pub use finder::{find_subtitles, find_subtitles_local};
+pub use finder::{find_subtitles_dedicated, find_subtitles_local, matches_video_stem};
 pub use opensubs::{download_subtitle, search_and_download};

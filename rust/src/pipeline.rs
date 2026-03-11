@@ -555,7 +555,7 @@ fn analyze_single_file(
     let subtitle_files = if video_stem.is_empty() {
         Vec::new()
     } else if is_dedicated {
-        subtitles::find_subtitles(parent_dir.to_str().unwrap_or("."), video_stem)
+        subtitles::find_subtitles_dedicated(parent_dir.to_str().unwrap_or("."), video_stem)
     } else {
         subtitles::find_subtitles_local(parent_dir.to_str().unwrap_or("."), video_stem)
     };
@@ -924,7 +924,11 @@ fn process_single_file(
     for junk_path in &analysis.junk_files {
         let junk = Path::new(junk_path);
         if let Err(e) = fs::remove_file(junk) {
-            log::warn!("[process] Failed to remove junk file {}: {}", junk.display(), e);
+            // NotFound is expected when multiple videos in the same folder share junk files —
+            // the first one to process deletes them, the rest see "not found".
+            if e.kind() != std::io::ErrorKind::NotFound {
+                log::warn!("[process] Failed to remove junk file {}: {}", junk.display(), e);
+            }
         }
         if let Some(junk_parent) = junk.parent() {
             clean_empty_dirs(junk_parent, source_root);

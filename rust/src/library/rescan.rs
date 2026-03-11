@@ -170,13 +170,13 @@ pub fn rescan_library(config: &Config, mut progress_fn: impl FnMut(&RescanProgre
                         if !video_stem.is_empty() {
                             if let Ok(entries) = fs::read_dir(src_dir) {
                                 for entry in entries.flatten() {
-                                    let ename = entry.file_name().to_string_lossy().to_string();
-                                    let ext = Path::new(&ename).extension().and_then(|e| e.to_str()).unwrap_or("");
-                                    if matches!(ext, "srt" | "ass" | "ssa" | "sub" | "vtt")
-                                        && ename.to_lowercase().starts_with(&video_stem.to_lowercase())
+                                    let path = entry.path();
+                                    if path.is_file()
+                                        && crate::shared::video::is_subtitle_file(&path)
+                                        && crate::subtitles::matches_video_stem(&path, video_stem)
                                     {
-                                        if let Err(e) = fs::remove_file(entry.path()) {
-                                            log::warn!("[rescan] Failed to delete co-located file {}: {}", entry.path().display(), e);
+                                        if let Err(e) = fs::remove_file(&path) {
+                                            log::warn!("[rescan] Failed to delete co-located file {}: {}", path.display(), e);
                                         }
                                     }
                                 }
@@ -246,8 +246,9 @@ pub fn rescan_library(config: &Config, mut progress_fn: impl FnMut(&RescanProgre
                         let epath = entry.path();
                         let ename = entry.file_name().to_string_lossy().to_string();
                         let ext = Path::new(&ename).extension().and_then(|e| e.to_str()).unwrap_or("");
-                        if matches!(ext, "srt" | "ass" | "ssa" | "sub" | "vtt")
-                            && ename.to_lowercase().starts_with(&old_stem.to_lowercase())
+                        if epath.is_file()
+                            && crate::shared::video::is_subtitle_file(&epath)
+                            && crate::subtitles::matches_video_stem(&epath, old_stem)
                         {
                             let lang = subtitles::detect_language(&ename);
                             let forced = subtitles::is_forced(&ename);

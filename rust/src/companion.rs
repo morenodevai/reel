@@ -28,7 +28,7 @@ pub struct CompanionScan {
 
 /// Scan the parent directory of a video file to detect companion files.
 /// Only returns images as companions — subtitles are already handled by
-/// `subtitles::find_subtitles`, and junk by `junk::find_junk_files_recursive`.
+/// the `subtitles::finder` module, and junk by `junk::find_junk_files*`.
 pub fn scan_companions(video_path: &Path) -> CompanionScan {
     let parent = match video_path.parent() {
         Some(p) => p,

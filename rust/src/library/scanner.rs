@@ -618,15 +618,12 @@ fn remove_junk_tree(dir: &Path) {
 fn has_subtitle_file(dir: &Path, video_stem: &str) -> bool {
     if let Ok(entries) = fs::read_dir(dir) {
         for entry in entries.flatten() {
-            let name = entry.file_name().to_string_lossy().to_lowercase();
-            if name.starts_with(&video_stem.to_lowercase()) {
-                let ext = Path::new(&*name)
-                    .extension()
-                    .and_then(|e| e.to_str())
-                    .unwrap_or("");
-                if crate::shared::video::SUBTITLE_EXTENSIONS.contains(&ext) {
-                    return true;
-                }
+            let path = entry.path();
+            if path.is_file()
+                && crate::shared::video::is_subtitle_file(&path)
+                && crate::subtitles::matches_video_stem(&path, video_stem)
+            {
+                return true;
             }
         }
     }
