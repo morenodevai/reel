@@ -13,8 +13,8 @@ import 'package:reel/components/drop_zone.dart';
 import 'package:reel/components/empty_state.dart';
 import 'package:reel/components/loading_skeleton.dart';
 import 'package:reel/theme/app_theme.dart';
-import 'package:reel/src/rust/config.dart';
 import 'package:reel/providers/playback_provider.dart';
+import 'package:reel/utils/config_copy.dart';
 import 'package:reel/src/rust/api/pipeline_api.dart' as pipeline_api;
 import 'package:reel/src/rust/api/library_api.dart' as library_api;
 import 'package:reel/src/rust/api/config_api.dart' as config_api;
@@ -110,24 +110,53 @@ class FormatsPageWidget extends ConsumerWidget {
           const SizedBox(height: 24),
           DropZone(
             compact: library.formats.isNotEmpty,
-            onDrop: (paths) => _handleDrop(paths, ref),
-            onBrowse: () => _handleBrowse(ref),
+            onDrop: (paths) => _confirmAndProcess(context, paths, ref),
+            onBrowse: () => _handleBrowse(context, ref),
           ),
         ],
       ),
     );
   }
 
-  Future<void> _handleDrop(List<String> paths, WidgetRef ref) async {
+  Future<void> _confirmAndProcess(BuildContext context, List<String> paths, WidgetRef ref) async {
+    final itemCount = paths.length;
+    final label = itemCount == 1 ? paths.first.split(RegExp(r'[\\/]')).last : '$itemCount item(s)';
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: const Text('Organize files?', style: TextStyle(color: AppColors.textPrimary, fontSize: 16)),
+        content: Text(
+          'Process $label and organize into your library?',
+          style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel', style: TextStyle(color: AppColors.textTertiary)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Organize', style: TextStyle(color: AppColors.primary)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      _handleDrop(paths, ref);
+    }
+  }
+
+  void _handleDrop(List<String> paths, WidgetRef ref) {
     final toast = ref.read(toastProvider.notifier);
     toast.show('Processing ${paths.length} item(s)...', type: ToastType.info);
+    // Fire-and-forget: Rust-side try_start_bg_processing() prevents concurrent runs.
+    // Subscription not stored because this stateless page outlives processing.
     pipeline_api.processBackground(paths: paths).listen(
       (event) {
         // Parse progress events for user feedback
         try {
-          final data = Map<String, dynamic>.from(
-            event.isNotEmpty ? _parseJson(event) : {},
-          );
+          final data = event.isNotEmpty ? _parseJson(event) : <String, dynamic>{};
           final type = data['type'] as String?;
           if (type == 'done') {
             final succeeded = data['succeeded'] as int? ?? 0;
@@ -173,7 +202,7 @@ class FormatsPageWidget extends ConsumerWidget {
     }
   }
 
-  Future<void> _handleBrowse(WidgetRef ref) async {
+  Future<void> _handleBrowse(BuildContext context, WidgetRef ref) async {
     final result = await FilePicker.platform.pickFiles(
       allowMultiple: true,
       dialogTitle: 'Select media files to organize',
@@ -183,8 +212,8 @@ class FormatsPageWidget extends ConsumerWidget {
           .where((f) => f.path != null)
           .map((f) => f.path!)
           .toList();
-      if (paths.isNotEmpty) {
-        await _handleDrop(paths, ref);
+      if (paths.isNotEmpty && context.mounted) {
+        await _confirmAndProcess(context, paths, ref);
       }
     }
   }
@@ -234,21 +263,9 @@ class _NoLibraryState extends ConsumerWidget {
     if (result != null) {
       try {
         final libraryRoot = await config_api.ensureLibraryRoot(parent: result);
-        ref.read(configProvider.notifier).updateConfig((cfg) {
-          return Config(
-            libraryPath: libraryRoot,
-            watchPath: cfg.watchPath,
-            tmdbApiKey: cfg.tmdbApiKey,
-            opensubsApiKey: cfg.opensubsApiKey,
-            tvdbApiKey: cfg.tvdbApiKey,
-            subtitleLanguages: cfg.subtitleLanguages,
-            autoDownloadSubs: cfg.autoDownloadSubs,
-            qbittorrent: cfg.qbittorrent,
-            qbitEnabled: cfg.qbitEnabled,
-            watcherEnabled: cfg.watcherEnabled,
-            theme: cfg.theme,
-          );
-        });
+        ref.read(configProvider.notifier).updateConfig(
+          (cfg) => copyConfig(cfg, libraryPath: libraryRoot),
+        );
       } catch (e) {
         ref.read(toastProvider.notifier).show(
           'Failed to create library: $e',

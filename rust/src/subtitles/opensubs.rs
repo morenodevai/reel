@@ -92,7 +92,9 @@ pub fn download_subtitle(
     std::fs::write(&sub_path, &bytes)
         .map_err(|e| format!("Failed to write subtitle: {}", e))?;
 
-    super::sync::sync_subtitle(video_path, &sub_path).ok();
+    if let Err(e) = super::sync::sync_subtitle(video_path, &sub_path) {
+        log::warn!("[subtitle] Sync failed for {}: {}", sub_path.display(), e);
+    }
 
     Ok(sub_path.to_string_lossy().to_string())
 }
@@ -201,7 +203,9 @@ pub fn search_and_download(
                 let ext = filename.rsplit('.').next().unwrap_or("srt");
                 let sub_path = video_dir.join(format!("{}.{}.{}", video_stem, lang, ext));
                 if std::fs::write(&sub_path, &bytes).is_ok() {
-                    super::sync::sync_subtitle(video, &sub_path).ok();
+                    if let Err(e) = super::sync::sync_subtitle(video, &sub_path) {
+                        log::warn!("[subtitle] Sync failed for {}: {}", sub_path.display(), e);
+                    }
                     downloaded += 1;
                 } else {
                     failed += 1;
@@ -262,24 +266,14 @@ struct OsDownloadResponse {
 
 fn find_all_videos_in_dir(dir: &Path) -> Vec<std::path::PathBuf> {
     let mut videos = Vec::new();
-    if let Ok(entries) = std::fs::read_dir(dir) {
-        for entry in entries.flatten() {
-            if entry.path().is_file() && crate::renamer::is_video_file(&entry.path()) {
-                videos.push(entry.path());
-            }
-        }
-    }
-    if let Ok(entries) = std::fs::read_dir(dir) {
-        for entry in entries.flatten() {
-            if entry.path().is_dir() {
-                if let Ok(sub) = std::fs::read_dir(entry.path()) {
-                    for se in sub.flatten() {
-                        if se.path().is_file() && crate::renamer::is_video_file(&se.path()) {
-                            videos.push(se.path());
-                        }
-                    }
-                }
-            }
+    for entry in walkdir::WalkDir::new(dir)
+        .max_depth(2)
+        .into_iter()
+        .filter_map(|e| e.ok())
+    {
+        let path = entry.path();
+        if path.is_file() && crate::renamer::is_video_file(path) {
+            videos.push(path.to_path_buf());
         }
     }
     videos
@@ -372,6 +366,7 @@ fn os_search(
         .header("Content-Type", "application/json")
         .header("User-Agent", crate::shared::http::USER_AGENT)
         .send()
+        .map_err(|e| log::debug!("[subtitle] Search request failed for {}: {}", url, e))
         .ok()?;
     if !resp.status().is_success() {
         log::warn!(
@@ -381,7 +376,10 @@ fn os_search(
         );
         return None;
     }
-    resp.json::<OsSearchResponse>().ok().map(|r| r.data)
+    resp.json::<OsSearchResponse>()
+        .map_err(|e| log::debug!("[subtitle] Failed to parse search response: {}", e))
+        .ok()
+        .map(|r| r.data)
 }
 
 fn os_download(

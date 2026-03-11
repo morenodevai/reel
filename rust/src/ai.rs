@@ -24,7 +24,7 @@ pub struct ClassificationResult {
 
 /// Local AI classifier using llama.cpp
 pub struct LocalClassifier {
-    #[allow(dead_code)]
+    #[allow(dead_code)] // RAII: backend must outlive model, stored here to prevent drop
     backend: LlamaBackend,
     model: LlamaModel,
 }
@@ -145,10 +145,12 @@ pub fn get_model_path() -> Result<PathBuf, String> {
         .join(MODEL_FILENAME);
 
     if !model_path.exists() {
-        return Err(format!(
-            "AI model not found at {}",
+        let msg = format!(
+            "AI model not found at {} — classification will use heuristics only",
             model_path.display()
-        ));
+        );
+        log::error!("[ai] {}", msg);
+        return Err(msg);
     }
 
     Ok(model_path)
@@ -157,11 +159,14 @@ pub fn get_model_path() -> Result<PathBuf, String> {
 /// Initialize the global classifier
 pub fn init_classifier() -> Result<(), String> {
     let model_path = get_model_path()?;
+    log::info!("[ai] Loading model from {}", model_path.display());
+
     let classifier = LocalClassifier::new(model_path.to_str().unwrap())?;
 
     let mut guard = AI_CLASSIFIER.lock().map_err(|_| "Lock error")?;
     *guard = Some(classifier);
 
+    log::info!("[ai] Classifier ready");
     Ok(())
 }
 

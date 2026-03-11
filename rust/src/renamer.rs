@@ -46,6 +46,11 @@ static BRACKET_RE: Lazy<Regex> =
 static MULTI_SPACE_RE: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"\s+").unwrap());
 
+/// Matches common extras/specials markers in filenames.
+pub static EXTRAS_RE: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"(?i)\b(creditless|NCOP|NCED|NC[\s._-]?OP|NC[\s._-]?ED|clean[\s._-]?(OP|ED)|textless|extras?|bonus|promo)\b").unwrap()
+});
+
 #[derive(Debug, Clone)]
 pub struct ParsedFilename {
     pub title: String,
@@ -54,6 +59,7 @@ pub struct ParsedFilename {
     pub episode: Option<u16>,
     pub episode_end: Option<u16>,
     pub is_anime_format: bool,
+    pub is_extra: bool,
     pub release_group: Option<String>,
 }
 
@@ -63,6 +69,8 @@ pub fn parse_filename(filename: &str) -> ParsedFilename {
         .file_stem()
         .and_then(|s| s.to_str())
         .unwrap_or(filename);
+
+    let is_extra = EXTRAS_RE.is_match(stem);
 
     // Try anime format first: [Group] Title - Episode (Quality)
     if let Some(caps) = ANIME_RE.captures(stem) {
@@ -77,6 +85,7 @@ pub fn parse_filename(filename: &str) -> ParsedFilename {
             episode,
             episode_end: None,
             is_anime_format: true,
+            is_extra,
             release_group: group,
         };
     }
@@ -99,6 +108,7 @@ pub fn parse_filename(filename: &str) -> ParsedFilename {
             episode,
             episode_end: None,
             is_anime_format: false,
+            is_extra,
             release_group,
         };
     }
@@ -120,6 +130,7 @@ pub fn parse_filename(filename: &str) -> ParsedFilename {
             episode: Some(ova_num.unwrap_or(0)), // OVA 2 → episode 2, bare OVA → episode 0
             episode_end: None,
             is_anime_format: false,
+            is_extra,
             release_group,
         };
     }
@@ -162,6 +173,7 @@ pub fn parse_filename(filename: &str) -> ParsedFilename {
         episode,
         episode_end,
         is_anime_format: false,
+        is_extra,
         release_group,
     }
 }

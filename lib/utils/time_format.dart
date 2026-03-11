@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 String timeAgo(String timestamp) {
   try {
     final then = DateTime.parse(timestamp);
@@ -8,7 +10,8 @@ String timeAgo(String timestamp) {
     if (diff.inHours < 24) return '${diff.inHours}h ago';
     if (diff.inDays < 7) return '${diff.inDays}d ago';
     return '${then.month}/${then.day}/${then.year}';
-  } catch (_) {
+  } catch (e) {
+    debugPrint('[timeAgo] Failed to parse timestamp "$timestamp": $e');
     return timestamp;
   }
 }

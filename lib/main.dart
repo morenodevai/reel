@@ -38,11 +38,12 @@ Future<void> main() async {
   // Initialize the Rust bridge
   await RustLib.init();
 
-  // Initialize the database
+  // Initialize the database — fatal if this fails, app can't function without it
   try {
     await init_api.initDb();
   } catch (e) {
-    debugPrint('DB init failed: $e');
+    debugPrint('FATAL: DB init failed: $e');
+    exit(1);
   }
 
   // Initialize AI classifier in background (loads 668MB model, non-blocking)
@@ -212,24 +213,30 @@ class _AppShellState extends ConsumerState<AppShell> {
 /// {app}/data/bin/ and {app}/data/models/. This function copies them to the
 /// Rust config directory (%APPDATA%/Reel/) where the backend expects them.
 /// Files that already exist at the destination are skipped.
+///
+/// Only specific subdirectories are deployed — {app}/data/ also contains
+/// Flutter internals (app.so, icudtl.dat) that must NOT be copied to APPDATA.
 Future<void> _deployBundledAssets() async {
   if (!Platform.isWindows) return;
 
   final appDir = File(Platform.resolvedExecutable).parent.path;
-  final dataDir = Directory(p.join(appDir, 'data'));
-  if (!dataDir.existsSync()) return;
-
   final appData = Platform.environment['APPDATA'];
   if (appData == null) {
     debugPrint('[deploy] APPDATA environment variable not set — skipping asset deployment');
     return;
   }
-  final destRoot = Directory(p.join(appData, 'Reel'));
+  final destRoot = p.join(appData, 'Reel');
 
-  try {
-    await _copyDirIfMissing(dataDir, destRoot);
-  } catch (e) {
-    debugPrint('[deploy] Asset deployment failed: $e');
+  const deployDirs = ['bin', 'models'];
+  for (final dir in deployDirs) {
+    final src = Directory(p.join(appDir, 'data', dir));
+    if (src.existsSync()) {
+      try {
+        await _copyDirIfMissing(src, Directory(p.join(destRoot, dir)));
+      } catch (e) {
+        debugPrint('[deploy] Failed to deploy $dir: $e');
+      }
+    }
   }
 }
 

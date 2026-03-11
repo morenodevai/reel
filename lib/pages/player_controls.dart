@@ -501,8 +501,9 @@ class SubtitlePicker extends ConsumerWidget {
   }
 
   void _showPicker(BuildContext context, WidgetRef ref) {
-    final RenderBox button = context.findRenderObject() as RenderBox;
-    final overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
+    final button = context.findRenderObject() as RenderBox?;
+    final overlay = Overlay.of(context).context.findRenderObject() as RenderBox?;
+    if (button == null || overlay == null) return;
     final position = RelativeRect.fromRect(
       button.localToGlobal(Offset.zero, ancestor: overlay) & button.size,
       Offset.zero & overlay.size,
@@ -591,8 +592,9 @@ class AudioPicker extends ConsumerWidget {
   }
 
   void _showPicker(BuildContext context, WidgetRef ref) {
-    final RenderBox button = context.findRenderObject() as RenderBox;
-    final overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
+    final button = context.findRenderObject() as RenderBox?;
+    final overlay = Overlay.of(context).context.findRenderObject() as RenderBox?;
+    if (button == null || overlay == null) return;
     final position = RelativeRect.fromRect(
       button.localToGlobal(Offset.zero, ancestor: overlay) & button.size,
       Offset.zero & overlay.size,

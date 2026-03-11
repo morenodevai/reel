@@ -11,7 +11,7 @@ class TitleBar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final nav = ref.watch(navigationProvider.notifier);
+    final nav = ref.read(navigationProvider.notifier);
     final pages = ref.watch(navigationProvider);
     final canGoBack = pages.length > 1;
     final title = nav.title;

@@ -101,7 +101,7 @@ fn login(client: &reqwest::blocking::Client, config: &QbitConfig) -> Result<(), 
     }
 
     let body = resp.text().unwrap_or_default();
-    if body.contains("Fails") || body.contains("fail") {
+    if body.trim() != "Ok." {
         return Err("Login failed — check username and password".to_string());
     }
 
@@ -127,8 +127,11 @@ pub fn test_connection(config: &QbitConfig) -> Result<QbitTestResult, String> {
     let version = client
         .get(&version_url)
         .send()
+        .map_err(|e| log::debug!("[qbit] Version check request failed: {}", e))
         .ok()
-        .and_then(|r| r.text().ok())
+        .and_then(|r| r.text()
+            .map_err(|e| log::debug!("[qbit] Failed to read version response: {}", e))
+            .ok())
         .unwrap_or_else(|| "unknown".to_string());
 
     Ok(QbitTestResult {
@@ -318,7 +321,7 @@ pub fn import_torrent(hash: &str, config: &Config) -> Result<pipeline::BatchResu
             .to_string();
 
         // Reuse the same analysis function the drop pipeline uses
-        let result = pipeline::analyze_single_file_pub(video_path, &filename, api_key, opensubs_key, library);
+        let result = pipeline::analyze_single_file_pub(video_path, &filename, api_key, opensubs_key, library, None);
         analyses.push(result);
     }
 

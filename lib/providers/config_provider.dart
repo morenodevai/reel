@@ -14,6 +14,7 @@ class ConfigNotifier extends AsyncNotifier<Config?> {
     try {
       return await config_api.loadConfig();
     } catch (e) {
+      debugPrint('[config] Failed to load config: $e');
       return null;
     }
   }
@@ -40,7 +41,12 @@ class ConfigNotifier extends AsyncNotifier<Config?> {
         await config_api.saveConfig(cfg: updated);
       } catch (e) {
         debugPrint('[config] Immediate save failed: $e');
-        state = AsyncValue.data(await config_api.loadConfig());
+        try {
+          state = AsyncValue.data(await config_api.loadConfig());
+        } catch (e2) {
+          debugPrint('[config] Fallback reload also failed: $e2');
+          state = AsyncValue.error(e, StackTrace.current);
+        }
         return;
       }
     } else {
@@ -54,17 +60,29 @@ class ConfigNotifier extends AsyncNotifier<Config?> {
       await config_api.saveConfig(cfg: cfg);
       state = AsyncValue.data(cfg);
     } catch (e) {
-      // Restore from disk on error
-      state = AsyncValue.data(await config_api.loadConfig());
+      debugPrint('[config] Save failed: $e');
+      try {
+        state = AsyncValue.data(await config_api.loadConfig());
+      } catch (e2) {
+        debugPrint('[config] Fallback reload also failed: $e2');
+        state = AsyncValue.error(e, StackTrace.current);
+      }
     }
   }
 
   void _debounceSave(Config cfg) {
     _saveDebounce?.cancel();
-    _saveDebounce = Timer(const Duration(milliseconds: 600), () {
-      config_api.saveConfig(cfg: cfg).catchError((e) {
-      debugPrint('[config] Debounced save failed: $e');
-    });
+    _saveDebounce = Timer(const Duration(milliseconds: 600), () async {
+      try {
+        await config_api.saveConfig(cfg: cfg);
+      } catch (e) {
+        debugPrint('[config] Debounced save failed: $e');
+        try {
+          state = AsyncValue.data(await config_api.loadConfig());
+        } catch (e2) {
+          debugPrint('[config] Fallback reload also failed: $e2');
+        }
+      }
     });
   }
 }

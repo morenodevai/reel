@@ -10,6 +10,7 @@ import 'package:reel/components/empty_state.dart';
 import 'package:reel/components/loading_skeleton.dart';
 import 'package:reel/theme/app_theme.dart';
 import 'package:reel/utils/time_format.dart';
+import 'package:reel/components/action_button.dart';
 
 class HistoryPageWidget extends ConsumerStatefulWidget {
   const HistoryPageWidget({super.key});
@@ -77,13 +78,16 @@ class _HistoryPageWidgetState extends ConsumerState<HistoryPageWidget> {
     }
   }
 
+  /// Approves all currently-loaded items. Items beyond the scroll window
+  /// are not affected — the user must scroll to load more first.
+  // TODO: Add a bulk lock_all_transactions() Rust API to avoid this limitation.
   Future<void> _handleApproveAll() async {
     final toast = ref.read(toastProvider.notifier);
     try {
       final ids = _items.map((t) => t.id).toList();
       await review_api.lockTransactions(ids: ids);
       setState(() => _items.clear());
-      toast.show('All items approved');
+      toast.show('Approved ${ids.length} item(s)');
     } catch (e) {
       toast.show('Approve failed: $e', type: ToastType.error);
     }
@@ -151,14 +155,14 @@ class _HistoryPageWidgetState extends ConsumerState<HistoryPageWidget> {
               ),
               Row(
                 children: [
-                  _BulkButton(
+                  ActionButton(
                     icon: Icons.delete_outline,
                     label: 'Clear All',
                     color: AppColors.error,
                     onTap: _handleClearAll,
                   ),
                   const SizedBox(width: 8),
-                  _BulkButton(
+                  ActionButton(
                     icon: Icons.check_circle_outline,
                     label: 'Approve All',
                     color: AppColors.success,
@@ -316,42 +320,6 @@ class _HistoryItemRow extends StatelessWidget {
     );
   }
 
-}
-
-class _BulkButton extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-  final VoidCallback onTap;
-  const _BulkButton({required this.icon, required this.label, required this.color, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 14, color: color),
-              const SizedBox(width: 6),
-              Text(
-                label,
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: color),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 class _HistoryLoadingSkeleton extends StatelessWidget {

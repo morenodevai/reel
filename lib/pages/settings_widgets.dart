@@ -286,7 +286,7 @@ class ApiKeyField extends StatelessWidget {
 
 class QbitManualConfig extends StatelessWidget {
   final QbitConfig config;
-  final void Function(String field, dynamic value) onUpdate;
+  final ValueChanged<QbitConfig> onUpdate;
   final VoidCallback onTest;
 
   const QbitManualConfig({
@@ -295,6 +295,16 @@ class QbitManualConfig extends StatelessWidget {
     required this.onUpdate,
     required this.onTest,
   });
+
+  void _emit({String? host, int? port, String? username, String? password}) {
+    onUpdate(QbitConfig(
+      host: host ?? config.host,
+      port: port ?? config.port,
+      username: username ?? config.username,
+      password: password ?? config.password,
+      autoRemove: config.autoRemove,
+    ));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -314,7 +324,7 @@ class QbitManualConfig extends StatelessWidget {
                     initialValue: config.host,
                     style: const TextStyle(fontSize: 12, color: AppColors.textPrimary),
                     decoration: const InputDecoration(hintText: 'localhost'),
-                    onChanged: (v) => onUpdate('host', v),
+                    onChanged: (v) => _emit(host: v),
                   ),
                 ],
               ),
@@ -331,7 +341,7 @@ class QbitManualConfig extends StatelessWidget {
                     initialValue: config.port.toString(),
                     style: const TextStyle(fontSize: 12, color: AppColors.textPrimary),
                     keyboardType: TextInputType.number,
-                    onChanged: (v) => onUpdate('port', int.tryParse(v) ?? 0),
+                    onChanged: (v) => _emit(port: int.tryParse(v) ?? 0),
                   ),
                 ],
               ),
@@ -352,7 +362,7 @@ class QbitManualConfig extends StatelessWidget {
                     initialValue: config.username,
                     style: const TextStyle(fontSize: 12, color: AppColors.textPrimary),
                     decoration: const InputDecoration(hintText: 'admin'),
-                    onChanged: (v) => onUpdate('username', v),
+                    onChanged: (v) => _emit(username: v),
                   ),
                 ],
               ),
@@ -369,7 +379,7 @@ class QbitManualConfig extends StatelessWidget {
                     initialValue: config.password,
                     style: const TextStyle(fontSize: 12, color: AppColors.textPrimary),
                     obscureText: true,
-                    onChanged: (v) => onUpdate('password', v),
+                    onChanged: (v) => _emit(password: v),
                   ),
                 ],
               ),

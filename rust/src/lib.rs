@@ -10,6 +10,7 @@ pub mod shared;
 
 pub mod ai;
 pub mod classifier;
+pub mod logging;
 pub mod companion;
 pub mod config;
 pub mod formats;

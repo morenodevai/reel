@@ -66,7 +66,9 @@ pub fn identify_by_hash(path: &Path, api_key: &str) -> Option<HashIdentification
         return None;
     }
 
-    let (hash, file_size) = compute_os_hash(path).ok()?;
+    let (hash, file_size) = compute_os_hash(path)
+        .map_err(|e| log::debug!("[identify] oshash failed for {}: {}", path.display(), e))
+        .ok()?;
     log::info!(
         "[identify] OpenSubtitles hash: {} size: {} for {}",
         hash,
@@ -88,6 +90,7 @@ pub fn identify_by_hash(path: &Path, api_key: &str) -> Option<HashIdentification
         .header("Content-Type", "application/json")
         .header("User-Agent", crate::shared::http::USER_AGENT)
         .send()
+        .map_err(|e| log::debug!("[identify] OpenSubtitles hash request failed: {}", e))
         .ok()?;
 
     if !resp.status().is_success() {
@@ -98,7 +101,9 @@ pub fn identify_by_hash(path: &Path, api_key: &str) -> Option<HashIdentification
         return None;
     }
 
-    let body: serde_json::Value = resp.json().ok()?;
+    let body: serde_json::Value = resp.json()
+        .map_err(|e| log::debug!("[identify] Failed to parse hash lookup response: {}", e))
+        .ok()?;
     let data = body.get("data")?.as_array()?;
 
     if data.is_empty() {

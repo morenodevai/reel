@@ -18,7 +18,9 @@ const IMAGE_EXTENSIONS: &[&str] = &["jpg", "jpeg", "png", "gif", "bmp", "webp", 
 /// Result of scanning a video file's parent folder for companions.
 #[derive(Debug, Clone)]
 pub struct CompanionScan {
-    /// True if the folder contains exactly one video (ignoring samples).
+    /// True if the folder is dedicated to this video (safe to recurse for subtitles/junk).
+    /// A folder is dedicated when it has exactly one non-sample video AND no subdirectories
+    /// that themselves contain videos (which would indicate a shared drop root).
     pub is_dedicated_folder: bool,
     /// Image files found alongside the video (candidates for trash).
     pub image_files: Vec<String>,
@@ -35,6 +37,7 @@ pub fn scan_companions(video_path: &Path) -> CompanionScan {
 
     let mut video_count = 0u32;
     let mut image_files = Vec::new();
+    let mut has_video_subdir = false;
 
     let entries = match fs::read_dir(parent) {
         Ok(e) => e,
@@ -43,28 +46,49 @@ pub fn scan_companions(video_path: &Path) -> CompanionScan {
 
     for entry in entries.flatten() {
         let path = entry.path();
-        if !path.is_file() {
-            continue;
-        }
-        if is_video_file(&path) {
-            // Ignore sample files (< 100MB with "sample" in name)
-            let is_sample = path.file_name()
-                .and_then(|n| n.to_str())
-                .map(|n| n.to_lowercase().contains("sample"))
-                .unwrap_or(false)
-                && fs::metadata(&path).map(|m| m.len() < 100 * 1024 * 1024).unwrap_or(false);
-            if !is_sample {
+        if path.is_file() {
+            if is_video_file(&path) && !is_sample_file(&path) {
                 video_count += 1;
+            } else if is_image_file(&path) {
+                image_files.push(path.to_string_lossy().to_string());
             }
-        } else if is_image_file(&path) {
-            image_files.push(path.to_string_lossy().to_string());
+        } else if path.is_dir() && !has_video_subdir {
+            has_video_subdir = dir_contains_video(&path);
         }
     }
 
+    // A dedicated folder has exactly one video and no sibling directories containing
+    // other videos. True dedicated folders (e.g., "Movie.2024.1080p/") have flat
+    // structure: video + Subs/ + junk. A drop root with video folders alongside
+    // standalone files has subdirectories with videos and must NOT recurse.
     CompanionScan {
-        is_dedicated_folder: video_count == 1,
+        is_dedicated_folder: video_count == 1 && !has_video_subdir,
         image_files,
     }
+}
+
+/// Check if a file looks like a sample (< 100MB with "sample" in the name).
+fn is_sample_file(path: &Path) -> bool {
+    path.file_name()
+        .and_then(|n| n.to_str())
+        .map(|n| n.to_lowercase().contains("sample"))
+        .unwrap_or(false)
+        && fs::metadata(path).map(|m| m.len() < 100 * 1024 * 1024).unwrap_or(false)
+}
+
+/// Shallow check: does this directory contain any non-sample video file?
+fn dir_contains_video(dir: &Path) -> bool {
+    let entries = match fs::read_dir(dir) {
+        Ok(e) => e,
+        Err(_) => return false,
+    };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.is_file() && is_video_file(&path) && !is_sample_file(&path) {
+            return true;
+        }
+    }
+    false
 }
 
 fn is_image_file(path: &Path) -> bool {
@@ -311,5 +335,13 @@ fn unique_path(path: &Path) -> PathBuf {
             return candidate;
         }
     }
-    path.to_path_buf()
+    // Exhausted numeric suffixes — use UUID to guarantee uniqueness
+    let uuid = uuid::Uuid::new_v4();
+    let name = if ext.is_empty() {
+        format!("{}_{}", stem, uuid)
+    } else {
+        format!("{}_{}.{}", stem, uuid, ext)
+    };
+    log::warn!("[companion] Exhausted 1000 unique path attempts for {}, using UUID", path.display());
+    parent.join(&name)
 }

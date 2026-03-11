@@ -14,6 +14,7 @@ import 'package:reel/providers/toast_provider.dart';
 import 'package:reel/providers/qbit_provider.dart';
 import 'package:reel/pages/settings_widgets.dart';
 import 'package:reel/theme/app_theme.dart';
+import 'package:reel/utils/config_copy.dart';
 
 /// Language codes for subtitle selection.
 const _languages = [
@@ -79,44 +80,24 @@ class _SettingsPageWidgetState extends ConsumerState<SettingsPageWidget> {
   Future<void> _checkAi() async {
     try {
       final ready = await ai_api.isAiReady();
-      if (mounted) setState(() => _aiReady = ready);
+      if (mounted) {
+        setState(() => _aiReady = ready);
+        if (ready) {
+          _aiPollTimer?.cancel();
+          _aiPollTimer = null;
+        }
+      }
     } catch (e) {
-      if (mounted) setState(() => _aiError = 'Check failed: $e');
+      if (mounted) {
+        setState(() => _aiError = 'Check failed: $e');
+        _aiPollTimer?.cancel();
+        _aiPollTimer = null;
+      }
     }
   }
 
   void _updateConfig(Config Function(Config c) updater) {
     ref.read(configProvider.notifier).updateConfig(updater);
-  }
-
-  Config _copyConfig(Config c, {
-    String? libraryPath,
-    String? watchPath,
-    String? tmdbApiKey,
-    String? opensubsApiKey,
-    String? tvdbApiKey,
-    List<String>? subtitleLanguages,
-    bool? autoDownloadSubs,
-    QbitConfig? qbittorrent,
-    bool? qbitEnabled,
-    bool? watcherEnabled,
-    String? theme,
-    bool clearLibraryPath = false,
-    bool clearWatchPath = false,
-  }) {
-    return Config(
-      libraryPath: clearLibraryPath ? null : (libraryPath ?? c.libraryPath),
-      watchPath: clearWatchPath ? null : (watchPath ?? c.watchPath),
-      tmdbApiKey: tmdbApiKey ?? c.tmdbApiKey,
-      opensubsApiKey: opensubsApiKey ?? c.opensubsApiKey,
-      tvdbApiKey: tvdbApiKey ?? c.tvdbApiKey,
-      subtitleLanguages: subtitleLanguages ?? c.subtitleLanguages,
-      autoDownloadSubs: autoDownloadSubs ?? c.autoDownloadSubs,
-      qbittorrent: qbittorrent ?? c.qbittorrent,
-      qbitEnabled: qbitEnabled ?? c.qbitEnabled,
-      watcherEnabled: watcherEnabled ?? c.watcherEnabled,
-      theme: theme ?? c.theme,
-    );
   }
 
   @override
@@ -154,7 +135,7 @@ class _SettingsPageWidgetState extends ConsumerState<SettingsPageWidget> {
                   label: 'Watch folder for new files',
                   trailing: ToggleSwitch(
                     value: config.watcherEnabled,
-                    onChanged: (v) => _updateConfig((c) => _copyConfig(c, watcherEnabled: v)),
+                    onChanged: (v) => _updateConfig((c) => copyConfig(c, watcherEnabled: v)),
                   ),
                 ),
                 if (config.watcherEnabled) ...[
@@ -212,7 +193,7 @@ class _SettingsPageWidgetState extends ConsumerState<SettingsPageWidget> {
                   label: 'Auto-download subtitles',
                   trailing: ToggleSwitch(
                     value: config.autoDownloadSubs,
-                    onChanged: (v) => _updateConfig((c) => _copyConfig(c, autoDownloadSubs: v)),
+                    onChanged: (v) => _updateConfig((c) => copyConfig(c, autoDownloadSubs: v)),
                   ),
                 ),
                 const Divider(height: 24),
@@ -262,7 +243,7 @@ class _SettingsPageWidgetState extends ConsumerState<SettingsPageWidget> {
                   trailing: ToggleSwitch(
                     value: config.qbitEnabled,
                     onChanged: (v) => ref.read(configProvider.notifier).updateConfig(
-                      (c) => _copyConfig(c, qbitEnabled: v),
+                      (c) => copyConfig(c, qbitEnabled: v),
                       immediate: true,
                     ),
                   ),
@@ -325,7 +306,7 @@ class _SettingsPageWidgetState extends ConsumerState<SettingsPageWidget> {
                     const Divider(height: 16),
                     QbitManualConfig(
                       config: config.qbittorrent,
-                      onUpdate: (field, value) => _updateQbit(field, value, config),
+                      onUpdate: (qbit) => _updateConfig((c) => copyConfig(c, qbittorrent: qbit)),
                       onTest: () => _testQbit(config),
                     ),
                   ],
@@ -343,7 +324,7 @@ class _SettingsPageWidgetState extends ConsumerState<SettingsPageWidget> {
                           password: config.qbittorrent.password,
                           autoRemove: v,
                         );
-                        _updateConfig((c) => _copyConfig(c, qbittorrent: newQbit));
+                        _updateConfig((c) => copyConfig(c, qbittorrent: newQbit));
                       },
                     ),
                   ),
@@ -391,7 +372,7 @@ class _SettingsPageWidgetState extends ConsumerState<SettingsPageWidget> {
                     reveal: _revealKeys['tmdb'] ?? false,
                     onToggleReveal: () => setState(() =>
                         _revealKeys['tmdb'] = !(_revealKeys['tmdb'] ?? false)),
-                    onChanged: (v) => _updateConfig((c) => _copyConfig(c, tmdbApiKey: v)),
+                    onChanged: (v) => _updateConfig((c) => copyConfig(c, tmdbApiKey: v)),
                   ),
                   const Divider(height: 24),
                   ApiKeyField(
@@ -402,7 +383,7 @@ class _SettingsPageWidgetState extends ConsumerState<SettingsPageWidget> {
                     reveal: _revealKeys['opensubs'] ?? false,
                     onToggleReveal: () => setState(() =>
                         _revealKeys['opensubs'] = !(_revealKeys['opensubs'] ?? false)),
-                    onChanged: (v) => _updateConfig((c) => _copyConfig(c, opensubsApiKey: v)),
+                    onChanged: (v) => _updateConfig((c) => copyConfig(c, opensubsApiKey: v)),
                   ),
                 ]),
               ],
@@ -451,7 +432,7 @@ class _SettingsPageWidgetState extends ConsumerState<SettingsPageWidget> {
     if (result != null) {
       try {
         final libraryRoot = await config_api.ensureLibraryRoot(parent: result);
-        _updateConfig((c) => _copyConfig(c, libraryPath: libraryRoot));
+        _updateConfig((c) => copyConfig(c, libraryPath: libraryRoot));
       } catch (e) {
         if (mounted) {
           ref.read(toastProvider.notifier).show(
@@ -468,7 +449,7 @@ class _SettingsPageWidgetState extends ConsumerState<SettingsPageWidget> {
       dialogTitle: 'Choose watch folder',
     );
     if (result != null) {
-      _updateConfig((c) => _copyConfig(c, watchPath: result));
+      _updateConfig((c) => copyConfig(c, watchPath: result));
     }
   }
 
@@ -479,19 +460,7 @@ class _SettingsPageWidgetState extends ConsumerState<SettingsPageWidget> {
     } else {
       langs.add(code);
     }
-    _updateConfig((c) => _copyConfig(c, subtitleLanguages: langs));
-  }
-
-  void _updateQbit(String field, dynamic value, Config config) {
-    final q = config.qbittorrent;
-    final newQbit = switch (field) {
-      'host' => QbitConfig(host: value as String, port: q.port, username: q.username, password: q.password, autoRemove: q.autoRemove),
-      'port' => QbitConfig(host: q.host, port: value as int, username: q.username, password: q.password, autoRemove: q.autoRemove),
-      'username' => QbitConfig(host: q.host, port: q.port, username: value as String, password: q.password, autoRemove: q.autoRemove),
-      'password' => QbitConfig(host: q.host, port: q.port, username: q.username, password: value as String, autoRemove: q.autoRemove),
-      _ => q,
-    };
-    _updateConfig((c) => _copyConfig(c, qbittorrent: newQbit));
+    _updateConfig((c) => copyConfig(c, subtitleLanguages: langs));
   }
 
   void _clearOverrideLater() {
@@ -506,7 +475,7 @@ class _SettingsPageWidgetState extends ConsumerState<SettingsPageWidget> {
     try {
       final detected = await qbit_api.autoDetectQbittorrent();
       await ref.read(configProvider.notifier).updateConfig(
-        (c) => _copyConfig(c, qbittorrent: detected),
+        (c) => copyConfig(c, qbittorrent: detected),
         immediate: true,
       );
       final result = await qbit_api.testQbittorrent(qbitConfig: detected);

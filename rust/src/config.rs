@@ -161,7 +161,8 @@ fn migrate_windows_config() {
     }
 
     // Create new config directory
-    if fs::create_dir_all(&new_dir).is_err() {
+    if let Err(e) = fs::create_dir_all(&new_dir) {
+        eprintln!("Migration: failed to create config dir {}: {}", new_dir.display(), e);
         return;
     }
 

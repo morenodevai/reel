@@ -65,14 +65,14 @@ fn transaction_from_row(row: &rusqlite::Row) -> rusqlite::Result<Transaction> {
         source_path: row.get(2)?,
         dest_path: row.get(3)?,
         title: row.get(4)?,
-        year: row.get::<_, Option<i32>>(5)?.map(|y| y as u16),
+        year: row.get::<_, Option<i32>>(5)?.map(|y| y.max(0) as u16),
         format: row.get(6)?,
         genre: row.get(7)?,
         media_type: row.get(8)?,
-        season: row.get::<_, Option<i32>>(9)?.map(|s| s as u16),
-        episode: row.get::<_, Option<i32>>(10)?.map(|e| e as u16),
+        season: row.get::<_, Option<i32>>(9)?.map(|s| s.max(0) as u16),
+        episode: row.get::<_, Option<i32>>(10)?.map(|e| e.max(0) as u16),
         episode_title: row.get(11)?,
-        tmdb_id: row.get::<_, Option<i64>>(12)?.map(|id| id as u64),
+        tmdb_id: row.get::<_, Option<i64>>(12)?.map(|id| id.max(0) as u64),
         poster_url: row.get(13)?,
         sha256: row.get(14)?,
         timestamp: row.get(15)?,
@@ -188,10 +188,15 @@ pub fn undo_transaction(id: &str) -> AppResult<UndoResult> {
 
         // Canonicalize BEFORE the rename — dest_path won't exist after the move.
         let library_root = config::load_config()
+            .map_err(|e| log::debug!("[undo] Failed to load config: {}", e))
             .ok()
             .and_then(|c| c.library_path)
-            .and_then(|p| fs::canonicalize(&p).ok());
-        let dest_canonical = fs::canonicalize(dest_path).ok();
+            .and_then(|p| fs::canonicalize(&p)
+                .map_err(|e| log::debug!("[undo] Failed to canonicalize library path: {}", e))
+                .ok());
+        let dest_canonical = fs::canonicalize(dest_path)
+            .map_err(|e| log::debug!("[undo] Failed to canonicalize dest path {}: {}", dest_path.display(), e))
+            .ok();
 
         let source_path = Path::new(&txn.source_path);
         if let Some(parent) = source_path.parent() {
@@ -199,9 +204,17 @@ pub fn undo_transaction(id: &str) -> AppResult<UndoResult> {
         }
 
         if fs::rename(dest_path, source_path).is_err() {
-            fs::copy(dest_path, source_path)?;
+            let src_size = fs::metadata(dest_path)?.len();
+            let copied = fs::copy(dest_path, source_path)?;
+            if copied != src_size {
+                let _ = fs::remove_file(source_path);
+                return Err(crate::error::AppError::Process(format!(
+                    "Undo copy verification failed: expected {}B, copied {}B",
+                    src_size, copied
+                )));
+            }
             if let Err(e) = fs::remove_file(dest_path) {
-                log::warn!("[undo] Failed to remove source after copy {}: {}", dest_path.display(), e);
+                log::warn!("[undo] Failed to remove dest after copy {}: {}", dest_path.display(), e);
             }
         }
 

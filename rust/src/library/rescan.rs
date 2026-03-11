@@ -120,10 +120,22 @@ pub fn rescan_library(config: &Config, mut progress_fn: impl FnMut(&RescanProgre
                 continue;
             }
 
+            // Extract current format from directory structure: Library/{format}/{genre}/{title}/
+            let current_format = folder
+                .parent()                    // genre dir
+                .and_then(|g| g.parent())    // format dir
+                .and_then(|f| f.file_name())
+                .and_then(|n| n.to_str())
+                .filter(|s| crate::formats::is_valid_format(s))
+                .map(|s| s.to_string());
+
             let mut folder_fixed = false;
             for video in &videos {
                 let filename = video.file_name().and_then(|n| n.to_str()).unwrap_or("unknown").to_string();
-                let analysis = pipeline::analyze_single_file_pub(video, &filename, api_key, opensubs_key, &library_path);
+                let analysis = pipeline::analyze_single_file_pub(
+                    video, &filename, api_key, opensubs_key, &library_path,
+                    current_format.as_deref(),
+                );
                 let current_path = video.to_string_lossy().to_string();
 
                 if analysis.dest_path == current_path {
@@ -191,17 +203,23 @@ pub fn rescan_library(config: &Config, mut progress_fn: impl FnMut(&RescanProgre
                 let moved = if fs::rename(video, dest).is_ok() {
                     true
                 } else {
+                    let src_len = match fs::metadata(video) {
+                        Ok(m) => m.len(),
+                        Err(e) => {
+                            log::error!("[rescan] Failed to read source metadata for {}: {}", video.display(), e);
+                            progress.failed += 1;
+                            continue;
+                        }
+                    };
                     match fs::copy(video, dest) {
-                        Ok(_) => {
-                            let src_len = fs::metadata(video).map(|m| m.len()).unwrap_or(0);
-                            let dst_len = fs::metadata(dest).map(|m| m.len()).unwrap_or(0);
-                            if src_len == dst_len && dst_len > 0 {
+                        Ok(copied) => {
+                            if copied == src_len {
                                 if let Err(e) = fs::remove_file(video) {
                                     log::warn!("[rescan] Failed to remove source after copy: {}", e);
                                 }
                                 true
                             } else {
-                                log::error!("[rescan] Copy verification failed for {} (src={}B dst={}B)", video.display(), src_len, dst_len);
+                                log::error!("[rescan] Copy verification failed for {} (src={}B copied={}B)", video.display(), src_len, copied);
                                 if let Err(e) = fs::remove_file(dest) {
                                     log::warn!("[rescan] Failed to clean up dest after copy verification failure {}: {}", dest.display(), e);
                                 }

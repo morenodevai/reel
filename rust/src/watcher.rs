@@ -156,6 +156,7 @@ where
                     &config_for_thread.tmdb_api_key,
                     &config_for_thread.opensubs_api_key,
                     &library,
+                    None,
                 );
 
                 let batch_id = uuid::Uuid::new_v4().to_string();
@@ -210,13 +211,18 @@ where
         .map_err(|e| format!("Failed to watch path: {}", e))?;
 
     // Store state so watcher stays alive and can be stopped cleanly
-    if let Ok(mut state) = STATE.lock() {
-        *state = Some(WatcherState {
-            watcher,
-            stop_flag,
-        });
+    match STATE.lock() {
+        Ok(mut state) => {
+            *state = Some(WatcherState {
+                watcher,
+                stop_flag,
+            });
+            RUNNING.store(true, Ordering::SeqCst);
+        }
+        Err(e) => {
+            return Err(format!("Failed to acquire watcher lock: {}", e));
+        }
     }
-    RUNNING.store(true, Ordering::SeqCst);
 
     log::info!("Watcher: monitoring {} → organizing to library", watch_path);
     Ok(())

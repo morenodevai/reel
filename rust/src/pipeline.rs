@@ -134,7 +134,7 @@ pub async fn analyze_files(
         let video_path_clone = video_path.clone();
 
         let result = tokio::task::spawn_blocking(move || {
-            analyze_single_file(&video_path_clone, &filename, &api_key, &opensubs_key, &library)
+            analyze_single_file(&video_path_clone, &filename, &api_key, &opensubs_key, &library, None)
         })
         .await
         .map_err(|e| format!("Analysis task failed: {}", e))?;
@@ -145,15 +145,19 @@ pub async fn analyze_files(
     Ok(results)
 }
 
-/// Public entry point for analyzing a single file (used by qBittorrent import).
+/// Public entry point for analyzing a single file (used by qBittorrent import, watcher, etc.).
+///
+/// `current_format` is an optional hint for rescan — the format directory the
+/// file currently lives in.  Pass `None` for new files being organized.
 pub fn analyze_single_file_pub(
     video_path: &Path,
     filename: &str,
     api_key: &str,
     opensubs_key: &str,
     library: &str,
+    current_format: Option<&str>,
 ) -> AnalysisResult {
-    analyze_single_file(video_path, filename, api_key, opensubs_key, library)
+    analyze_single_file(video_path, filename, api_key, opensubs_key, library, current_format)
 }
 
 fn analyze_single_file(
@@ -162,6 +166,7 @@ fn analyze_single_file(
     api_key: &str,
     opensubs_key: &str,
     library: &str,
+    current_format: Option<&str>,
 ) -> AnalysisResult {
     log::info!("[analyze] === Analyzing: {} ===", video_path.display());
 
@@ -400,9 +405,19 @@ fn analyze_single_file(
     // Season/episode priority: probe metadata > filename > hash
     // Filename S01E05 is almost always right (torrent naming conventions).
     // Hash only fills in when filename had no episode info at all.
-    let final_season = probe_parsed.as_ref().and_then(|pp| pp.season).or(parsed.season).or(hash_season);
-    let final_episode = probe_parsed.as_ref().and_then(|pp| pp.episode).or(parsed.episode).or(hash_episode);
+    let mut final_season = probe_parsed.as_ref().and_then(|pp| pp.season).or(parsed.season).or(hash_season);
+    let mut final_episode = probe_parsed.as_ref().and_then(|pp| pp.episode).or(parsed.episode).or(hash_episode);
     let final_episode_end = probe_parsed.as_ref().and_then(|pp| pp.episode_end).or(parsed.episode_end);
+
+    // Extras/specials (NCOP, NCED, creditless, etc.) without episode markers
+    // get routed to Season 00 so they live under the parent show, not as
+    // standalone Movies in the library root.
+    if parsed.is_extra && final_season.is_none() && final_episode.is_none() {
+        final_season = Some(0);
+        final_episode = Some(0);
+        has_episode = true;
+        log::info!("[analyze] Extras detected — routing to Season 00");
+    }
 
     // 3. Get episode title (and runtime) if applicable
     let mut episode_runtime_min: Option<u32> = None;
@@ -413,6 +428,25 @@ fn analyze_single_file(
             info.and_then(|i| i.name)
         }
         _ => None,
+    };
+
+    // Extras routed to S00E00: use the matched extra marker (NCOP, NCED, etc.)
+    // as episode_title so multiple extras don't collide at the same path.
+    // Only override when TMDb didn't return a real episode title for S00E00.
+    let episode_title = if parsed.is_extra && final_season == Some(0) && final_episode == Some(0)
+        && episode_title.is_none()
+    {
+        let stem = std::path::Path::new(filename)
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or(filename);
+        let marker = renamer::EXTRAS_RE
+            .find(stem)
+            .map(|m| m.as_str().trim().to_string())
+            .unwrap_or_else(|| stem.to_string());
+        Some(marker)
+    } else {
+        episode_title
     };
 
     // Expected runtime: episode-specific from TMDb, or series average, or movie runtime
@@ -451,7 +485,7 @@ fn analyze_single_file(
         .as_ref()
         .map(|p| p.has_japanese_audio)
         .unwrap_or(false);
-    let classification = classifier::classify(filename, &parsed, tmdb_data.as_ref(), has_japanese_audio);
+    let classification = classifier::classify(filename, &parsed, tmdb_data.as_ref(), has_japanese_audio, current_format);
 
     // Confidence: combine classifier, hash validation, and duration match.
     //   hash confirmed + duration exact = 1.00 (bulletproof)
@@ -508,22 +542,30 @@ fn analyze_single_file(
         has_episode,
     );
 
-    // 7. Find subtitles near the video
+    // 7. Scan for companion files and determine if this is a dedicated folder.
+    // A dedicated folder (one video, no sibling video directories) is safe to recurse
+    // for subtitles/junk. A shared directory (drop root) must use flat search to prevent
+    // cross-contamination between videos.
     let parent_dir = video_path.parent().unwrap_or(Path::new("."));
-    let subtitle_files = subtitles::find_subtitles(
-        parent_dir.to_str().unwrap_or("."),
-        video_path.file_stem().and_then(|s| s.to_str()).unwrap_or(""),
-    );
+    let companion_scan = companion::scan_companions(video_path);
+    let is_dedicated = companion_scan.is_dedicated_folder;
 
-    // 8. Find junk files recursively (catches files in Other/, Subs/ etc.)
-    let junk_files = if video_path.parent().is_some() {
-        junk::find_junk_files_recursive(parent_dir)
-    } else {
+    // 8. Find subtitles near the video
+    let video_stem = video_path.file_stem().and_then(|s| s.to_str()).unwrap_or("");
+    let subtitle_files = if video_stem.is_empty() {
         Vec::new()
+    } else if is_dedicated {
+        subtitles::find_subtitles(parent_dir.to_str().unwrap_or("."), video_stem)
+    } else {
+        subtitles::find_subtitles_local(parent_dir.to_str().unwrap_or("."), video_stem)
     };
 
-    // 9. Scan for companion files (images in dedicated movie folders)
-    let companion_scan = companion::scan_companions(video_path);
+    // 9. Find junk files — only recurse in dedicated folders
+    let junk_files = if is_dedicated {
+        junk::find_junk_files_recursive(parent_dir)
+    } else {
+        junk::find_junk_files(parent_dir)
+    };
 
     log::info!("[analyze] Result: '{}' ({:?}) → {} | subs={} junk={} companions={} dedicated={}",
         final_title, final_year, &dest_path, subtitle_files.len(), junk_files.len(),
@@ -653,7 +695,10 @@ pub async fn process_files(
     let mut errors = Vec::new();
     let total = analyses.len() as u32;
 
-    let library_path = config.library_path.clone().unwrap_or_default();
+    let library_path = match config.library_path.clone() {
+        Some(p) if !p.is_empty() => p,
+        _ => return Err("No library path configured".to_string()),
+    };
 
     for analysis in &analyses {
         if CANCEL_FLAG.load(Ordering::Relaxed) {
@@ -763,17 +808,13 @@ fn process_single_file(
     if fs::rename(&analysis.source_path, dest_path).is_err() {
         log::info!("[process] Rename failed (cross-device?), falling back to copy+delete");
         let src_size = fs::metadata(&analysis.source_path)
-            .map(|m| m.len()).unwrap_or(0);
-        fs::copy(&analysis.source_path, dest_path)
+            .map(|m| m.len())
+            .map_err(|e| format!("Failed to read source metadata: {}", e))?;
+        let copied = fs::copy(&analysis.source_path, dest_path)
             .map_err(|e| format!("Failed to copy file: {}", e))?;
-        // Verify copy by size
-        let dst_size = fs::metadata(dest_path)
-            .map(|m| m.len()).unwrap_or(0);
-        if dst_size != src_size {
-            if let Err(e) = fs::remove_file(dest_path) {
-                log::error!("[process] Failed to clean up bad copy {}: {}", dest_path.display(), e);
-            }
-            return Err(format!("Copy verification failed - size mismatch ({} vs {})", src_size, dst_size));
+        if copied != src_size {
+            let _ = fs::remove_file(dest_path);
+            return Err(format!("Copy verification failed - size mismatch (src={}B copied={}B)", src_size, copied));
         }
         fs::remove_file(&analysis.source_path)
             .map_err(|e| format!("Failed to remove source after copy: {}", e))?;
@@ -784,13 +825,40 @@ fn process_single_file(
         extract_thumbnail(dest_path);
     }
 
-    // 5. Handle subtitles
+    // 5. Record transaction FIRST — subtitles have a FK to this row.
+    let txn_id = uuid::Uuid::new_v4().to_string();
+    let sha256 = transaction::compute_sha256(&analysis.dest_path).unwrap_or_else(|e| {
+        log::warn!("[process] Failed to compute SHA-256 for {}: {}", analysis.dest_path, e);
+        String::new()
+    });
+    transaction::record(&transaction::Transaction {
+        id: txn_id.clone(),
+        batch_id: batch_id.to_string(),
+        source_path: analysis.source_path.clone(),
+        dest_path: analysis.dest_path.clone(),
+        title: analysis.title.clone(),
+        year: analysis.year,
+        format: analysis.format.clone(),
+        genre: analysis.genre.clone(),
+        media_type: analysis.media_type.clone(),
+        season: analysis.season,
+        episode: analysis.episode,
+        episode_title: analysis.episode_title.clone(),
+        tmdb_id: analysis.tmdb_id,
+        poster_url: analysis.poster_url.clone(),
+        sha256,
+        timestamp: chrono::Utc::now().to_rfc3339(),
+        undone: false,
+        locked: false,
+        confidence: analysis.confidence,
+    })?;
+
+    // 6. Handle co-located subtitles
     let video_stem = dest_path
         .file_stem()
         .and_then(|s| s.to_str())
         .unwrap_or("");
     let dest_dir = dest_path.parent().unwrap_or(Path::new("."));
-    let txn_id = uuid::Uuid::new_v4().to_string();
 
     for sub in &analysis.subtitle_files {
         let lang = subtitles::detect_language(sub);
@@ -821,7 +889,7 @@ fn process_single_file(
         if let Err(e) = transaction::record_subtitle(
             &txn_id,
             Some(sub),
-            sub_dest.to_str().unwrap_or(""),
+            &sub_dest.to_string_lossy(),
             &lang,
             false,
         ) {
@@ -829,7 +897,7 @@ fn process_single_file(
         }
     }
 
-    // 6. Download missing subs if enabled
+    // 7. Download missing subs if enabled
     if auto_download_subs && analysis.subtitle_files.is_empty() {
         for lang in subtitle_languages {
             log::info!("[process] Downloading {} subtitle for: {}", lang, analysis.dest_path);
@@ -847,7 +915,7 @@ fn process_single_file(
         }
     }
 
-    // 7. Remove junk files and clean their parent directories
+    // 8. Remove junk files and clean their parent directories
     // Use the cleanup_root (the folder the user dropped) as the upper boundary to prevent
     // deleting the drop folder itself or any well-known parent directories.
     let source_path = Path::new(&analysis.source_path);
@@ -863,7 +931,7 @@ fn process_single_file(
         }
     }
 
-    // 7.5. Clean empty subtitle source directories (Subs/, subtitles/, etc.)
+    // 8.5. Clean empty subtitle source directories (Subs/, subtitles/, etc.)
     for sub in &analysis.subtitle_files {
         let sub_path = Path::new(sub.as_str());
         if let Some(sub_parent) = sub_path.parent() {
@@ -875,7 +943,7 @@ fn process_single_file(
         }
     }
 
-    // 8. Trash companion images (only in dedicated movie folders)
+    // 9. Trash companion images (only in dedicated movie folders)
     if analysis.is_dedicated_folder && !library_path.is_empty() {
         for img_path in &analysis.companion_images {
             if let Err(e) = companion::trash_companion(img_path, &txn_id, library_path) {
@@ -884,33 +952,10 @@ fn process_single_file(
         }
     }
 
-    // 8.5. Clean empty source folder
+    // 9.5. Clean empty source folder
     if let Some(parent) = source_path.parent() {
         clean_empty_dirs(parent, source_root);
     }
-
-    // 9. Record transaction
-    transaction::record(&transaction::Transaction {
-        id: txn_id,
-        batch_id: batch_id.to_string(),
-        source_path: analysis.source_path.clone(),
-        dest_path: analysis.dest_path.clone(),
-        title: analysis.title.clone(),
-        year: analysis.year,
-        format: analysis.format.clone(),
-        genre: analysis.genre.clone(),
-        media_type: analysis.media_type.clone(),
-        season: analysis.season,
-        episode: analysis.episode,
-        episode_title: analysis.episode_title.clone(),
-        tmdb_id: analysis.tmdb_id,
-        poster_url: analysis.poster_url.clone(),
-        sha256: String::new(),
-        timestamp: chrono::Utc::now().to_rfc3339(),
-        undone: false,
-        locked: false,
-        confidence: analysis.confidence,
-    })?;
 
     log::info!("[process] Done: '{}' → {}/{}", analysis.title, analysis.format, analysis.genre);
     Ok(())
@@ -1010,8 +1055,18 @@ pub fn edit_and_relocate(edit: &EditRequest, library_path: &str) -> Result<trans
     // 9. Move video file (rename with copy+delete fallback)
     log::info!("[edit] Moving: {} → {}", old_txn.dest_path, new_dest);
     if fs::rename(old_path, new_dest_path).is_err() {
-        fs::copy(old_path, new_dest_path)
+        let src_size = fs::metadata(old_path)
+            .map(|m| m.len())
+            .map_err(|e| format!("Failed to read source metadata: {}", e))?;
+        let copied = fs::copy(old_path, new_dest_path)
             .map_err(|e| format!("Failed to copy file: {}", e))?;
+        if copied != src_size {
+            let _ = fs::remove_file(new_dest_path);
+            return Err(format!(
+                "Copy size mismatch: expected {} bytes, got {}",
+                src_size, copied
+            ));
+        }
         fs::remove_file(old_path)
             .map_err(|e| format!("Failed to remove original after copy: {}", e))?;
     }
@@ -1038,8 +1093,13 @@ pub fn edit_and_relocate(edit: &EditRequest, library_path: &str) -> Result<trans
         let new_sub_path = new_dir.join(&new_sub_filename);
         if fs::rename(sub_path, &new_sub_path).is_err() {
             match fs::copy(sub_path, &new_sub_path) {
-                Ok(_) => {
-                    if let Err(e) = fs::remove_file(sub_path) {
+                Ok(copied) => {
+                    let sub_size = fs::metadata(sub_path).map(|m| m.len()).unwrap_or(0);
+                    if sub_size > 0 && copied != sub_size {
+                        let _ = fs::remove_file(&new_sub_path);
+                        log::error!("[edit] Subtitle copy size mismatch for {}: expected {}, got {}",
+                            sub_path.display(), sub_size, copied);
+                    } else if let Err(e) = fs::remove_file(sub_path) {
                         log::error!("[edit] Failed to remove source subtitle after copy: {}", e);
                     }
                 }
@@ -1055,7 +1115,7 @@ pub fn edit_and_relocate(edit: &EditRequest, library_path: &str) -> Result<trans
         &edit.transaction_id,
         old_stem,
         new_stem,
-        new_dir.to_str().unwrap_or(""),
+        &new_dir.to_string_lossy(),
     ) {
         log::error!("[edit] Failed to update subtitle paths: {}", e);
     }
@@ -1072,6 +1132,10 @@ pub fn edit_and_relocate(edit: &EditRequest, library_path: &str) -> Result<trans
         log::error!("[edit] Failed to reassign subtitle records: {}", e);
     }
 
+    let sha256 = transaction::compute_sha256(&new_dest).unwrap_or_else(|e| {
+        log::warn!("[edit] Failed to compute SHA-256 for {}: {}", new_dest, e);
+        String::new()
+    });
     let new_txn = transaction::Transaction {
         id: new_txn_id,
         batch_id: old_txn.batch_id,
@@ -1087,7 +1151,7 @@ pub fn edit_and_relocate(edit: &EditRequest, library_path: &str) -> Result<trans
         episode_title: edit.episode_title.clone(),
         tmdb_id: edit.tmdb_id,
         poster_url: edit.poster_url.clone(),
-        sha256: String::new(),
+        sha256,
         timestamp: chrono::Utc::now().to_rfc3339(),
         undone: false,
         locked: true,
@@ -1111,6 +1175,14 @@ fn extract_thumbnail(video_path: &Path) {
         None => return,
     };
 
+    let video_str = match video_path.to_str() {
+        Some(s) => s,
+        None => {
+            log::warn!("[process] Cannot extract thumbnail: non-UTF-8 path {}", video_path.display());
+            return;
+        }
+    };
+
     let probe = subtitles::probe_file_metadata(video_path);
     let duration = probe.and_then(|p| p.duration_secs).unwrap_or(0.0);
     let seek_secs = if duration > 10.0 {
@@ -1123,18 +1195,27 @@ fn extract_thumbnail(video_path: &Path) {
     if thumb_path.exists() {
         return;
     }
+    let thumb_str = match thumb_path.to_str() {
+        Some(s) => s,
+        None => return,
+    };
 
-    let result = std::process::Command::new(&ffmpeg)
-        .args([
+    let mut cmd = std::process::Command::new(&ffmpeg);
+    cmd.args([
             "-ss", &seek_secs.to_string(),
-            "-i", video_path.to_str().unwrap_or(""),
+            "-i", video_str,
             "-vframes", "1",
             "-q:v", "2",
-            thumb_path.to_str().unwrap_or(""),
+            thumb_str,
         ])
         .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null())
-        .status();
+        .stderr(std::process::Stdio::null());
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+    }
+    let result = cmd.status();
 
     match result {
         Ok(status) if status.success() => {
@@ -1190,12 +1271,18 @@ pub(crate) fn partial_hash_match(a: &Path, b: &Path) -> bool {
     const CHUNK: u64 = 65_536; // 64KB
 
     let hash_ends = |path: &Path| -> Option<([u8; 32], [u8; 32])> {
-        let mut f = fs::File::open(path).ok()?;
-        let len = f.metadata().ok()?.len();
+        let mut f = fs::File::open(path)
+            .map_err(|e| log::debug!("[partial_hash] Failed to open {}: {}", path.display(), e))
+            .ok()?;
+        let len = f.metadata()
+            .map_err(|e| log::debug!("[partial_hash] Failed to get metadata for {}: {}", path.display(), e))
+            .ok()?.len();
 
         // Read first chunk
         let mut head = vec![0u8; CHUNK.min(len) as usize];
-        f.read_exact(&mut head).ok()?;
+        f.read_exact(&mut head)
+            .map_err(|e| log::debug!("[partial_hash] Failed to read head of {}: {}", path.display(), e))
+            .ok()?;
         let head_hash: [u8; 32] = {
             let mut h = Sha256::new();
             h.update(&head);
@@ -1204,9 +1291,13 @@ pub(crate) fn partial_hash_match(a: &Path, b: &Path) -> bool {
 
         // Read last chunk (may overlap with head for small files)
         let tail_start = len.saturating_sub(CHUNK);
-        f.seek(SeekFrom::Start(tail_start)).ok()?;
+        f.seek(SeekFrom::Start(tail_start))
+            .map_err(|e| log::debug!("[partial_hash] Failed to seek in {}: {}", path.display(), e))
+            .ok()?;
         let mut tail = vec![0u8; (len - tail_start) as usize];
-        f.read_exact(&mut tail).ok()?;
+        f.read_exact(&mut tail)
+            .map_err(|e| log::debug!("[partial_hash] Failed to read tail of {}: {}", path.display(), e))
+            .ok()?;
         let tail_hash: [u8; 32] = {
             let mut h = Sha256::new();
             h.update(&tail);

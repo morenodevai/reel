@@ -593,11 +593,8 @@ fn dir_contains_only_junk(dir: &Path) -> bool {
             if !dir_contains_only_junk(&path) {
                 return false;
             }
-        } else {
-            let name = entry.file_name().to_string_lossy().to_string();
-            if !matches!(name.as_str(), ".DS_Store" | "Thumbs.db" | "desktop.ini") {
-                return false;
-            }
+        } else if !crate::junk::is_junk_file(&path) {
+            return false;
         }
     }
     true

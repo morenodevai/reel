@@ -49,8 +49,8 @@ fn watch_progress_from_row(row: &rusqlite::Row) -> rusqlite::Result<WatchProgres
         title: row.get(5)?,
         poster_url: row.get(6)?,
         media_path: row.get(7)?,
-        season: row.get::<_, Option<i32>>(8)?.map(|v| v as u32),
-        episode: row.get::<_, Option<i32>>(9)?.map(|v| v as u32),
+        season: row.get::<_, Option<i32>>(8)?.map(|v| v.max(0) as u32),
+        episode: row.get::<_, Option<i32>>(9)?.map(|v| v.max(0) as u32),
         episode_title: row.get(10)?,
         media_type: row.get(11)?,
     })
@@ -141,7 +141,6 @@ pub fn mark_file_unwatched(file_path: &str) -> AppResult<()> {
 
 pub fn mark_season_watched(
     media_path: &str,
-    _season: u32,
     episode_files: &[String],
 ) -> AppResult<()> {
     let now = chrono::Utc::now().to_rfc3339();
@@ -170,13 +169,19 @@ pub fn mark_season_unwatched(media_path: &str, season: u32) -> AppResult<()> {
 
 pub fn get_continue_watching(limit: u32) -> AppResult<Vec<ContinueWatchingItem>> {
     with_connection(|conn| {
+        // Fetch only rows that could contribute to continue-watching.
+        // Limit to a generous window (10x requested limit) to avoid scanning
+        // the entire table while still giving the dedup logic enough candidates.
+        let fetch_limit = limit.saturating_mul(10).max(100);
         let mut stmt = conn.prepare(&format!(
-            "SELECT {} FROM watch_progress WHERE (completed = 0 AND position_seconds > 0) OR completed = 1
-             ORDER BY last_watched DESC",
+            "SELECT {} FROM watch_progress \
+             WHERE (completed = 0 AND position_seconds > 0) \
+                OR (completed = 1 AND media_type = 'tv') \
+             ORDER BY last_watched DESC LIMIT ?1",
             WP_COLS
         ))?;
 
-        let all = collect_rows(&mut stmt, [], watch_progress_from_row)?;
+        let all = collect_rows(&mut stmt, params![fetch_limit], watch_progress_from_row)?;
 
         let mut seen_media: std::collections::HashSet<String> = std::collections::HashSet::new();
         let mut result: Vec<ContinueWatchingItem> = Vec::new();

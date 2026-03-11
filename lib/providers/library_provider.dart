@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:reel/src/rust/library.dart';
 import 'package:reel/src/rust/api/library_api.dart' as library_api;
@@ -52,6 +53,7 @@ class LibraryNotifier extends Notifier<LibraryState> {
         loading: false,
       );
     } catch (e) {
+      debugPrint('[library] Failed to load library: $e');
       state = const LibraryState(loading: false);
     }
   }

@@ -23,11 +23,15 @@ pub fn get_poster_by_tmdb_id(tmdb_id: u64, api_key: &str, media_type: &str) -> O
     );
 
     TMDB.wait();
-    let resp = http::client().get(&url).send().ok()?;
+    let resp = http::client().get(&url).send()
+        .map_err(|e| log::debug!("[poster] TMDb request failed for {}/{}: {}", media_type, tmdb_id, e))
+        .ok()?;
     if !resp.status().is_success() {
         return None;
     }
-    let data: serde_json::Value = resp.json().ok()?;
+    let data: serde_json::Value = resp.json()
+        .map_err(|e| log::debug!("[poster] Failed to parse TMDb response for {}/{}: {}", media_type, tmdb_id, e))
+        .ok()?;
     let poster_path = data["poster_path"].as_str()?;
     let poster_url = format!("{}{}", super::TMDB_POSTER_BASE, poster_path);
     POSTER_CACHE.put(cache_key, poster_url.clone());

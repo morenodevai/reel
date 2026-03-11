@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:reel/theme/app_theme.dart';
@@ -5,7 +6,7 @@ import 'package:reel/theme/app_theme.dart';
 /// Drop zone for dragging media files/folders from the file manager.
 /// Uses desktop_drop for native drag-and-drop support.
 class DropZone extends StatefulWidget {
-  final void Function(List<String> paths) onDrop;
+  final FutureOr<void> Function(List<String> paths) onDrop;
   final VoidCallback onBrowse;
   final bool compact;
 

@@ -4,12 +4,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 enum ToastType { success, error, info }
 
 class ToastMessage {
+  static int _nextId = 0;
   final String id;
   final String message;
   final ToastType type;
 
   ToastMessage({required this.message, this.type = ToastType.success})
-      : id = DateTime.now().microsecondsSinceEpoch.toString();
+      : id = '${_nextId++}';
 }
 
 class ToastNotifier extends Notifier<List<ToastMessage>> {

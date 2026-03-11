@@ -27,11 +27,12 @@ fn migrate_from_v2(conn: &rusqlite::Connection) -> AppResult<()> {
 
         if !has_new_columns {
             log::info!("Migrating old database schema...");
-            conn.execute_batch(
+            if let Err(e) = conn.execute_batch(
                 "ALTER TABLE transactions RENAME TO transactions_backup;
                  ALTER TABLE operations RENAME TO operations_backup;",
-            )
-            .ok();
+            ) {
+                log::warn!("[migrate] Failed to rename old tables: {}", e);
+            }
         }
     }
     Ok(())

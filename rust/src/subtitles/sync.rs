@@ -15,14 +15,14 @@ pub(super) fn sync_subtitle(video_path: &Path, srt_path: &Path) -> Result<(), St
 
     let temp_wav = srt_path.with_extension("_sync_tmp.wav");
     if let Err(e) = extract_audio_wav(video_path, &temp_wav, 600) {
-        std::fs::remove_file(&temp_wav).ok();
+        cleanup_temp(&temp_wav);
         return Err(format!("Audio extraction failed: {}", e));
     }
 
     let audio_segments = match detect_speech_segments(&temp_wav) {
         Ok(s) => s,
         Err(e) => {
-            std::fs::remove_file(&temp_wav).ok();
+            cleanup_temp(&temp_wav);
             return Err(format!("Speech detection failed: {}", e));
         }
     };
@@ -30,7 +30,7 @@ pub(super) fn sync_subtitle(video_path: &Path, srt_path: &Path) -> Result<(), St
     let sub_segments = match parse_srt_timing(srt_path) {
         Ok(s) => s,
         Err(e) => {
-            std::fs::remove_file(&temp_wav).ok();
+            cleanup_temp(&temp_wav);
             return Err(format!("SRT parse failed: {}", e));
         }
     };
@@ -41,19 +41,30 @@ pub(super) fn sync_subtitle(video_path: &Path, srt_path: &Path) -> Result<(), St
         shift_srt(srt_path, offset_ms)?;
     }
 
-    std::fs::remove_file(&temp_wav).ok();
+    cleanup_temp(&temp_wav);
     Ok(())
+}
+
+fn cleanup_temp(path: &Path) {
+    if let Err(e) = std::fs::remove_file(path) {
+        log::debug!("[sync] Failed to clean up temp file {}: {}", path.display(), e);
+    }
 }
 
 fn is_ffmpeg_available() -> bool {
     match super::get_ffmpeg_path() {
-        Some(path) => std::process::Command::new(&path)
-            .arg("-version")
-            .stdout(std::process::Stdio::null())
-            .stderr(std::process::Stdio::null())
-            .status()
-            .map(|s| s.success())
-            .unwrap_or(false),
+        Some(path) => {
+            let mut cmd = std::process::Command::new(&path);
+            cmd.arg("-version")
+                .stdout(std::process::Stdio::null())
+                .stderr(std::process::Stdio::null());
+            #[cfg(target_os = "windows")]
+            {
+                use std::os::windows::process::CommandExt;
+                cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+            }
+            cmd.status().map(|s| s.success()).unwrap_or(false)
+        }
         None => false,
     }
 }
@@ -65,11 +76,15 @@ fn extract_audio_wav(
 ) -> Result<(), String> {
     let ffmpeg = super::get_ffmpeg_path()
         .ok_or_else(|| "Bundled ffmpeg not found".to_string())?;
-    let status = std::process::Command::new(&ffmpeg)
-        .args([
+    let video_str = video_path.to_str()
+        .ok_or_else(|| format!("Non-UTF-8 video path: {}", video_path.display()))?;
+    let wav_str = wav_path.to_str()
+        .ok_or_else(|| format!("Non-UTF-8 WAV path: {}", wav_path.display()))?;
+    let mut cmd = std::process::Command::new(&ffmpeg);
+    cmd.args([
             "-y",
             "-i",
-            video_path.to_str().unwrap_or(""),
+            video_str,
             "-vn",
             "-acodec",
             "pcm_s16le",
@@ -79,11 +94,16 @@ fn extract_audio_wav(
             "1",
             "-t",
             &duration_secs.to_string(),
-            wav_path.to_str().unwrap_or(""),
+            wav_str,
         ])
         .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null())
-        .status()
+        .stderr(std::process::Stdio::null());
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+    }
+    let status = cmd.status()
         .map_err(|e| format!("Failed to run ffmpeg: {}", e))?;
 
     if !status.success() {

@@ -1,8 +1,10 @@
 /// Local subtitle file discovery — find subtitle files near a video.
 
+use crate::shared::video::is_subtitle_file;
 use std::path::Path;
 
-/// Find subtitle files associated with a video file.
+/// Find subtitle files associated with a video file (recursive: searches subdirectories too).
+/// Use this for videos in dedicated folders where Subs/ subdirectories belong to the video.
 pub fn find_subtitles(dir: &str, video_stem: &str) -> Vec<String> {
     let mut found = Vec::new();
     let dir_path = Path::new(dir);
@@ -27,6 +29,14 @@ pub fn find_subtitles(dir: &str, video_stem: &str) -> Vec<String> {
         }
     }
 
+    found
+}
+
+/// Find subtitle files in the same directory only (no subdirectory recursion).
+/// Use this for standalone files in shared directories to prevent cross-contamination.
+pub fn find_subtitles_local(dir: &str, video_stem: &str) -> Vec<String> {
+    let mut found = Vec::new();
+    find_subs_in_dir(Path::new(dir), video_stem, &mut found);
     found
 }
 
@@ -71,11 +81,4 @@ fn find_subs_in_dir_recursive(dir: &Path, _video_stem: &str, results: &mut Vec<S
             results.push(path.to_string_lossy().to_string());
         }
     }
-}
-
-fn is_subtitle_file(path: &Path) -> bool {
-    path.extension()
-        .and_then(|e| e.to_str())
-        .map(|ext| super::SUBTITLE_EXTENSIONS.contains(&ext.to_lowercase().as_str()))
-        .unwrap_or(false)
 }

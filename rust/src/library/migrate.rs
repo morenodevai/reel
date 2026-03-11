@@ -54,8 +54,18 @@ fn copy_dir_recursive(src: &Path, dst: &Path) -> Result<(), String> {
         if src_path.is_dir() {
             copy_dir_recursive(&src_path, &dst_path)?;
         } else {
-            fs::copy(&src_path, &dst_path)
+            let src_size = fs::metadata(&src_path)
+                .map(|m| m.len())
+                .map_err(|e| format!("Failed to read metadata for {}: {}", src_path.display(), e))?;
+            let copied = fs::copy(&src_path, &dst_path)
                 .map_err(|e| format!("Failed to copy {}: {}", src_path.display(), e))?;
+            if copied != src_size {
+                let _ = fs::remove_file(&dst_path);
+                return Err(format!(
+                    "Copy size mismatch for {}: expected {} bytes, got {}",
+                    src_path.display(), src_size, copied
+                ));
+            }
         }
     }
 

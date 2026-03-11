@@ -17,6 +17,7 @@ pub struct MetadataResult {
     pub genre_ids: Vec<u32>,
     pub poster_url: Option<String>,
     pub origin_country: Vec<String>,
+    pub original_language: Option<String>,
     pub media_type: String, // "movie" or "tv"
     pub overview: Option<String>,
     pub runtime_minutes: Option<u32>,
@@ -56,6 +57,7 @@ struct TmdbSearchResult {
     genre_ids: Option<Vec<u32>>,
     poster_path: Option<String>,
     origin_country: Option<Vec<String>>,
+    original_language: Option<String>,
     #[serde(default)]
     #[allow(dead_code)] // Deserialized from TMDb API; available for future ranking
     popularity: f64,
@@ -165,6 +167,7 @@ pub fn search_tmdb(
         genre_ids: best.genre_ids.clone().unwrap_or_default(),
         poster_url,
         origin_country: best.origin_country.clone().unwrap_or_default(),
+        original_language: best.original_language.clone(),
         media_type: search_type.to_string(),
         overview: None,
         runtime_minutes: None,
@@ -174,7 +177,8 @@ pub fn search_tmdb(
     Some(result)
 }
 
-/// Search with fallback strategy: try specific type first, then alternate, then without year.
+/// Search with fallback strategy: try specific type first, then alternate,
+/// then without year, then with a cleaned/shortened title.
 pub fn search_with_fallback(
     title: &str,
     year: Option<u16>,
@@ -184,23 +188,87 @@ pub fn search_with_fallback(
     let primary = if has_episode { "tv" } else { "movie" };
     let secondary = if has_episode { "movie" } else { "tv" };
 
+    // 1. Exact title, both types, with year
     if let Some(result) = search_tmdb(title, year, primary, api_key) {
         return Some(result);
     }
     if let Some(result) = search_tmdb(title, year, secondary, api_key) {
         return Some(result);
     }
+
+    // 2. Exact title, both types, without year
     if year.is_some() {
         if let Some(result) = search_tmdb(title, None, primary, api_key) {
             return Some(result);
         }
-    }
-    if year.is_some() {
         if let Some(result) = search_tmdb(title, None, secondary, api_key) {
             return Some(result);
         }
     }
+
+    // 3. Cleaned title (strip trailing noise like "t03", "Signature Edition",
+    //    "XviD", parenthetical junk, etc.)
+    let cleaned = clean_search_title(title);
+    if !cleaned.is_empty() && cleaned != title {
+        log::info!("[tmdb] Retrying with cleaned title: '{}' → '{}'", title, cleaned);
+        if let Some(result) = search_tmdb(&cleaned, year, primary, api_key) {
+            return Some(result);
+        }
+        if let Some(result) = search_tmdb(&cleaned, year, secondary, api_key) {
+            return Some(result);
+        }
+        if year.is_some() {
+            if let Some(result) = search_tmdb(&cleaned, None, primary, api_key) {
+                return Some(result);
+            }
+        }
+    }
+
     None
+}
+
+/// Strip common noise from titles that prevent TMDb matches.
+///
+/// Examples:
+///   "The Iron Giant- Signature Edition t03" → "The Iron Giant"
+///   "KND OP I N T E R V I E W S XviD"      → "KND"
+///   "Danny Phantom 3-51 D"                   → "Danny Phantom"
+fn clean_search_title(title: &str) -> String {
+    use once_cell::sync::Lazy;
+    use regex::Regex;
+
+    // Strip trailing track/disc markers: "t00", "t01", "t03", "d01" etc.
+    static TRACK_RE: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(r"(?i)\s+[td]\d{1,2}\s*$").unwrap()
+    });
+    // Strip "Signature Edition", "Special Edition", "Director's Cut" etc.
+    static EDITION_RE: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(r"(?i)\s*[-:]\s*(signature|special|director'?s?|unrated|extended|theatrical)\s+(edition|cut|version)\b.*$").unwrap()
+    });
+    // Strip trailing codec/format markers
+    static CODEC_TAIL_RE: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(r"(?i)\s+(XviD|DivX|x264|x265|HEVC|AVC|AAC|AC3|FLAC)\b.*$").unwrap()
+    });
+    // Strip trailing isolated letters/numbers that look like noise: "3-51 D"
+    static NOISE_TAIL_RE: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(r"\s+\d+-\d+\s*[A-Za-z]?\s*$").unwrap()
+    });
+    // Strip spaced-out words (common in torrent names): "I N T E R V I E W S"
+    static SPACED_RE: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(r"\s+([A-Z]\s){3,}[A-Z]\b.*$").unwrap()
+    });
+
+    let mut cleaned = title.to_string();
+    cleaned = TRACK_RE.replace(&cleaned, "").to_string();
+    cleaned = EDITION_RE.replace(&cleaned, "").to_string();
+    cleaned = CODEC_TAIL_RE.replace(&cleaned, "").to_string();
+    cleaned = NOISE_TAIL_RE.replace(&cleaned, "").to_string();
+    cleaned = SPACED_RE.replace(&cleaned, "").to_string();
+
+    // Trim trailing hyphens and whitespace
+    cleaned = cleaned.trim_end_matches(|c: char| c == '-' || c == ' ').to_string();
+
+    cleaned
 }
 
 /// Get episode title from TMDb.
@@ -317,6 +385,8 @@ pub fn get_metadata_by_id(
         })
         .map(|r| r as u32);
 
+    let original_language = data["original_language"].as_str().map(|s| s.to_string());
+
     let result = MetadataResult {
         tmdb_id,
         title,
@@ -324,6 +394,7 @@ pub fn get_metadata_by_id(
         genre_ids,
         poster_url,
         origin_country,
+        original_language,
         media_type: media_type.to_string(),
         overview,
         runtime_minutes,
@@ -418,6 +489,11 @@ pub fn is_japanese_origin(countries: &[String]) -> bool {
     countries.iter().any(|c| c == "JP")
 }
 
+/// Check if original language is Japanese.
+pub fn is_japanese_language(lang: Option<&str>) -> bool {
+    lang == Some("ja")
+}
+
 fn find_best_match<'a>(
     results: &'a [TmdbSearchResult],
     query_title: &str,
@@ -445,6 +521,22 @@ fn find_best_match<'a>(
             .unwrap_or_default()
     };
 
+    // Given a set of candidates, pick the one whose year is closest to the
+    // query year.  Falls back to the first candidate when no year hint exists.
+    let closest_or_first = |candidates: &[&'a TmdbSearchResult]| -> Option<&'a TmdbSearchResult> {
+        if let Some(y) = year {
+            candidates.iter()
+                .min_by_key(|r| {
+                    result_year(r)
+                        .map(|ry| (ry as i32 - y as i32).unsigned_abs())
+                        .unwrap_or(u32::MAX)
+                })
+                .copied()
+        } else {
+            candidates.first().copied()
+        }
+    };
+
     // 1. Exact title + exact year
     if let Some(y) = year {
         for r in results {
@@ -454,31 +546,31 @@ fn find_best_match<'a>(
         }
     }
 
-    // 2. Exact title (any year)
-    for r in results {
-        if result_title(r) == query_lower {
-            return Some(r);
-        }
+    // 2. Exact title — prefer closest year when query has a year hint
+    let exact_matches: Vec<_> = results.iter()
+        .filter(|r| result_title(r) == query_lower)
+        .collect();
+    if !exact_matches.is_empty() {
+        return closest_or_first(&exact_matches);
     }
 
-    // 3. Short titles (<=5 chars): only accept exact matches
+    // 3. Short titles (<=5 chars): only accept exact matches (steps 1-2)
     if query_lower.len() <= 5 {
         return None;
     }
 
-    // 4. Title prefix match with year
-    if let Some(y) = year {
-        for r in results {
+    // 4. Title prefix match — prefer closest year
+    let prefix_matches: Vec<_> = results.iter()
+        .filter(|r| {
             let rt = result_title(r);
-            if (rt.starts_with(&query_lower) || query_lower.starts_with(&rt))
-                && result_year(r) == Some(y)
-            {
-                return Some(r);
-            }
-        }
+            rt.starts_with(&query_lower) || query_lower.starts_with(&rt)
+        })
+        .collect();
+    if !prefix_matches.is_empty() {
+        return closest_or_first(&prefix_matches);
     }
 
-    // 5. Significant word overlap
+    // 5. Significant word overlap — prefer closest year among matches
     let query_words: std::collections::HashSet<&str> = query_lower
         .split_whitespace()
         .filter(|w| w.len() > 2 && !matches!(*w, "the" | "and" | "for" | "from"))
@@ -488,18 +580,20 @@ fn find_best_match<'a>(
         return None;
     }
 
-    for r in results {
-        let rt = result_title(r);
-        let result_words: std::collections::HashSet<&str> = rt
-            .split_whitespace()
-            .filter(|w| w.len() > 2 && !matches!(*w, "the" | "and" | "for" | "from"))
-            .collect();
+    let threshold = (query_words.len() + 1) / 2;
+    let overlap_matches: Vec<_> = results.iter()
+        .filter(|r| {
+            let rt = result_title(r);
+            let result_words: std::collections::HashSet<&str> = rt
+                .split_whitespace()
+                .filter(|w| w.len() > 2 && !matches!(*w, "the" | "and" | "for" | "from"))
+                .collect();
+            query_words.intersection(&result_words).count() >= threshold
+        })
+        .collect();
 
-        let overlap = query_words.intersection(&result_words).count();
-        let threshold = (query_words.len() + 1) / 2;
-        if overlap >= threshold {
-            return Some(r);
-        }
+    if !overlap_matches.is_empty() {
+        return closest_or_first(&overlap_matches);
     }
 
     // 6. Trust TMDb top result for specific multi-word queries

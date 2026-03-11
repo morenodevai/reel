@@ -38,7 +38,9 @@ class _PlayerPageWidgetState extends ConsumerState<PlayerPageWidget> {
       if (!mounted) return;
       final notifier = ref.read(playbackProvider.notifier);
       _videoController = VideoController(notifier.player);
-      notifier.open(widget.detail, widget.file, widget.playlist, widget.startIndex);
+      notifier.open(widget.detail, widget.file, widget.playlist, widget.startIndex).catchError((e) {
+        debugPrint('[player] Failed to open media: $e');
+      });
       setState(() => _initialized = true);
       _focusNode.requestFocus();
     });

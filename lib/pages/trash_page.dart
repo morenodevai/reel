@@ -8,6 +8,7 @@ import 'package:reel/components/empty_state.dart';
 import 'package:reel/components/loading_skeleton.dart';
 import 'package:reel/theme/app_theme.dart';
 import 'package:reel/utils/time_format.dart';
+import 'package:reel/components/action_button.dart';
 
 class TrashPageWidget extends ConsumerStatefulWidget {
   const TrashPageWidget({super.key});
@@ -124,7 +125,7 @@ class _TrashPageWidgetState extends ConsumerState<TrashPageWidget> {
                 '${_items.length} item${_items.length != 1 ? 's' : ''}',
                 style: const TextStyle(fontSize: 12, color: AppColors.textTertiary),
               ),
-              _ActionButton(
+              ActionButton(
                 icon: Icons.delete_forever,
                 label: _emptyingAll ? 'Emptying...' : 'Empty All',
                 color: AppColors.error,
@@ -249,40 +250,6 @@ class _RowButton extends StatelessWidget {
               Icon(icon, size: 14, color: color),
               const SizedBox(width: 4),
               Text(label, style: TextStyle(fontSize: 12, color: color)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ActionButton extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-  final VoidCallback? onTap;
-  const _ActionButton({required this.icon, required this.label, required this.color, this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final effectiveColor = onTap != null ? color : color.withValues(alpha: 0.4);
-    return MouseRegion(
-      cursor: onTap != null ? SystemMouseCursors.click : SystemMouseCursors.basic,
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: effectiveColor.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 14, color: effectiveColor),
-              const SizedBox(width: 6),
-              Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: effectiveColor)),
             ],
           ),
         ),

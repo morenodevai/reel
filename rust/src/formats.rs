@@ -91,11 +91,11 @@ pub const FORMATS: &[FormatDefinition] = &[
     FormatDefinition {
         name: "Animated Movies",
         genres: &[
-            "Action",
+            "Family",
             "Adventure",
             "Comedy",
-            "Family",
             "Fantasy",
+            "Action",
             "Musical",
             "Sci-Fi",
         ],
@@ -104,11 +104,11 @@ pub const FORMATS: &[FormatDefinition] = &[
     FormatDefinition {
         name: "Animated Shows",
         genres: &[
-            "Action & Adventure",
-            "Comedy",
             "Family",
-            "Fantasy",
             "Kids",
+            "Comedy",
+            "Fantasy",
+            "Action & Adventure",
             "Sci-Fi & Fantasy",
         ],
         auto_create: true,

@@ -102,7 +102,7 @@ pub fn process_background(
                 .unwrap_or("unknown")
                 .to_string();
             let analysis =
-                pipeline::analyze_single_file_pub(video_path, &filename, &api_key, &opensubs_key, &library);
+                pipeline::analyze_single_file_pub(video_path, &filename, &api_key, &opensubs_key, &library, None);
             analyses.push(analysis);
         }
 
@@ -206,8 +206,10 @@ pub fn open_file(path: String) -> Result<(), String> {
     }
     #[cfg(target_os = "windows")]
     {
+        use std::os::windows::process::CommandExt;
         Command::new("cmd")
             .args(["/C", "start", "", &path])
+            .creation_flags(0x08000000) // CREATE_NO_WINDOW
             .status()
             .map_err(|e| format!("Failed to open: {}", e))?;
     }

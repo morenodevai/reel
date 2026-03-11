@@ -27,8 +27,8 @@ pub fn probe_file_metadata(video_path: &Path) -> Option<ProbeMetadata> {
     let ffprobe = get_ffprobe_path()?;
     let path_str = video_path.to_str()?;
 
-    let output = std::process::Command::new(&ffprobe)
-        .args([
+    let mut cmd = std::process::Command::new(&ffprobe);
+    cmd.args([
             "-v", "quiet",
             "-print_format", "json",
             "-show_format",
@@ -36,15 +36,23 @@ pub fn probe_file_metadata(video_path: &Path) -> Option<ProbeMetadata> {
             path_str,
         ])
         .stdout(std::process::Stdio::piped())
-        .stderr(std::process::Stdio::null())
-        .output()
+        .stderr(std::process::Stdio::null());
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+    }
+    let output = cmd.output()
+        .map_err(|e| log::debug!("[probe] ffprobe execution failed for {}: {}", video_path.display(), e))
         .ok()?;
 
     if !output.status.success() {
         return None;
     }
 
-    let json: serde_json::Value = serde_json::from_slice(&output.stdout).ok()?;
+    let json: serde_json::Value = serde_json::from_slice(&output.stdout)
+        .map_err(|e| log::debug!("[probe] Failed to parse ffprobe output for {}: {}", video_path.display(), e))
+        .ok()?;
 
     let format_tags = json.get("format").and_then(|f| f.get("tags"));
 

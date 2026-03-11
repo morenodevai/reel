@@ -15,7 +15,6 @@ import 'api/pipeline_api.dart';
 import 'api/playback_api.dart';
 import 'api/qbit_api.dart';
 import 'api/review_api.dart';
-import 'api/simple.dart';
 import 'api/subtitle_api.dart';
 import 'api/trash_api.dart';
 import 'api/watcher_api.dart';

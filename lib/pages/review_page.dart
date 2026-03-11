@@ -8,6 +8,7 @@ import 'package:reel/providers/toast_provider.dart';
 import 'package:reel/providers/library_provider.dart';
 import 'package:reel/components/loading_skeleton.dart';
 import 'package:reel/theme/app_theme.dart';
+import 'package:reel/components/action_button.dart';
 
 class ReviewPageWidget extends ConsumerStatefulWidget {
   final List<String> batchIds;
@@ -147,14 +148,14 @@ class _ReviewPageWidgetState extends ConsumerState<ReviewPageWidget> {
               ),
               Row(
                 children: [
-                  _ActionButton(
+                  ActionButton(
                     icon: Icons.delete_outline,
                     label: 'Undo All',
                     color: AppColors.error,
                     onTap: _clearAll,
                   ),
                   const SizedBox(width: 8),
-                  _ActionButton(
+                  ActionButton(
                     icon: Icons.check_circle_outline,
                     label: 'Approve All',
                     color: AppColors.success,
@@ -375,51 +376,6 @@ class _SmallButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(6),
           ),
           child: Icon(icon, size: 18, color: color),
-        ),
-      ),
-    );
-  }
-}
-
-class _ActionButton extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-  final VoidCallback onTap;
-  const _ActionButton({
-    required this.icon,
-    required this.label,
-    required this.color,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 14, color: color),
-              const SizedBox(width: 6),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  color: color,
-                ),
-              ),
-            ],
-          ),
         ),
       ),
     );
