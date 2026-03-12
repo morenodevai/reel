@@ -6,6 +6,7 @@ import 'package:reel/src/rust/api/review_api.dart' as review_api;
 import 'package:reel/src/rust/api/history_api.dart' as history_api;
 import 'package:reel/providers/toast_provider.dart';
 import 'package:reel/providers/library_provider.dart';
+import 'package:reel/utils/clear_pending.dart';
 import 'package:reel/components/loading_skeleton.dart';
 import 'package:reel/theme/app_theme.dart';
 import 'package:reel/components/action_button.dart';
@@ -56,18 +57,8 @@ class _ReviewPageWidgetState extends ConsumerState<ReviewPageWidget> {
   }
 
   Future<void> _clearAll() async {
-    final toast = ref.read(toastProvider.notifier);
-    try {
-      final result = await review_api.clearAllPending();
+    if (await clearAllPendingAndReport(ref)) {
       setState(() => _items = []);
-      ref.read(libraryProvider.notifier).refresh();
-      final msg = result.failed > 0
-          ? 'Cleared ${result.succeeded} items (${result.failed} failed to undo)'
-          : 'Cleared ${result.succeeded} items -- files moved back';
-      toast.show(msg,
-          type: result.failed > 0 ? ToastType.error : ToastType.success);
-    } catch (e) {
-      toast.show('Clear failed: $e', type: ToastType.error);
     }
   }
 

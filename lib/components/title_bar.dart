@@ -5,9 +5,8 @@ import 'package:reel/providers/navigation_provider.dart';
 import 'package:reel/theme/app_theme.dart';
 
 class TitleBar extends ConsumerWidget {
-  final int reviewCount;
   final int trashCount;
-  const TitleBar({super.key, this.reviewCount = 0, this.trashCount = 0});
+  const TitleBar({super.key, this.trashCount = 0});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -47,13 +46,6 @@ class TitleBar extends ConsumerWidget {
                 overflow: TextOverflow.ellipsis,
               ),
             ),
-            if (reviewCount > 0 && currentPage is! ReviewAppPage)
-              _IconBadge(
-                icon: Icons.assignment_outlined,
-                count: reviewCount,
-                badgeColor: AppColors.error,
-                onTap: () => nav.goToReview([]),
-              ),
             if (trashCount > 0 && currentPage is! TrashAppPage)
               _IconBadge(
                 icon: Icons.delete_outline,

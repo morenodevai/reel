@@ -10,7 +10,7 @@ use std::path::Path;
 // Hash identification and probe metadata live in identify/.
 // Re-exported here so existing callers continue to work.
 pub use crate::identify::hash::{compute_os_hash, HashIdentification, identify_by_hash};
-pub use crate::identify::probe::{probe_file_metadata, ProbeMetadata};
+pub use crate::identify::probe::{probe_file_metadata, EmbeddedSubtitle, ProbeMetadata};
 
 // Use shared::video::SUBTITLE_EXTENSIONS as single source of truth.
 pub(crate) use crate::shared::video::SUBTITLE_EXTENSIONS;
@@ -124,6 +124,19 @@ static LANG_MAP: Lazy<Vec<(&str, &str)>> = Lazy::new(|| {
         ("bg", "bul"),
     ]
 });
+
+/// Normalize a language code to ISO 639-2/B. Handles ISO 639-2/T variants
+/// (e.g. "fra"→"fre", "deu"→"ger") and ISO 639-1 codes (e.g. "en"→"eng").
+/// Returns the input unchanged if no mapping is found.
+pub fn normalize_lang(code: &str) -> String {
+    let lower = code.to_lowercase();
+    for (pattern, normalized) in LANG_MAP.iter() {
+        if lower == *pattern {
+            return normalized.to_string();
+        }
+    }
+    lower
+}
 
 /// Detect the language of a subtitle file from its filename or path.
 pub fn detect_language(path: &str) -> String {

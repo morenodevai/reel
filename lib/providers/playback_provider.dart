@@ -152,14 +152,14 @@ class PlaybackNotifier extends Notifier<PlaybackState> {
 
   // -- Playback controls --
 
-  void togglePlay() {
+  Future<void> togglePlay() async {
     _player.playOrPause();
-    _saveProgress();
+    await _saveProgress();
   }
 
-  void pause() {
+  Future<void> pause() async {
     _player.pause();
-    _saveProgress();
+    await _saveProgress();
   }
 
   Future<void> seek(Duration position) async {
@@ -260,6 +260,7 @@ class PlaybackNotifier extends Notifier<PlaybackState> {
   Future<void> playNext() async {
     if (!state.hasNext) return;
     _cancelAutoPlay();
+    await _saveProgress();
     final nextIndex = state.currentIndex + 1;
     final nextFile = state.playlist[nextIndex];
     await open(state.mediaDetail!, nextFile, state.playlist, nextIndex);
@@ -268,6 +269,7 @@ class PlaybackNotifier extends Notifier<PlaybackState> {
   Future<void> playPrevious() async {
     if (!state.hasPrevious) return;
     _cancelAutoPlay();
+    await _saveProgress();
     final prevIndex = state.currentIndex - 1;
     final prevFile = state.playlist[prevIndex];
     await open(state.mediaDetail!, prevFile, state.playlist, prevIndex);
@@ -276,6 +278,7 @@ class PlaybackNotifier extends Notifier<PlaybackState> {
   Future<void> playAtIndex(int index) async {
     if (index < 0 || index >= state.playlist.length) return;
     _cancelAutoPlay();
+    await _saveProgress();
     final file = state.playlist[index];
     await open(state.mediaDetail!, file, state.playlist, index);
   }
@@ -291,8 +294,8 @@ class PlaybackNotifier extends Notifier<PlaybackState> {
     }
   }
 
-  void _onCompleted() {
-    _markCompleted();
+  Future<void> _onCompleted() async {
+    await _markCompleted();
     if (state.isTV && state.hasNext) {
       _startAutoPlayCountdown();
     }

@@ -20,10 +20,6 @@ pub fn download_subtitle(
         .unwrap_or("");
     let video_dir = video_path.parent().unwrap_or(Path::new("."));
 
-    if has_existing_subtitle(video_dir, video_stem) {
-        return Err("Subtitle already exists".to_string());
-    }
-
     let client = crate::shared::http::client();
 
     let os_lang = super::to_os_lang(lang);

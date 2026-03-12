@@ -13,10 +13,9 @@ import 'package:reel/components/drop_zone.dart';
 import 'package:reel/components/empty_state.dart';
 import 'package:reel/components/loading_skeleton.dart';
 import 'package:reel/theme/app_theme.dart';
-import 'package:reel/providers/playback_provider.dart';
 import 'package:reel/utils/config_copy.dart';
+import 'package:reel/utils/play_media.dart';
 import 'package:reel/src/rust/api/pipeline_api.dart' as pipeline_api;
-import 'package:reel/src/rust/api/library_api.dart' as library_api;
 import 'package:reel/src/rust/api/config_api.dart' as config_api;
 
 class FormatsPageWidget extends ConsumerWidget {
@@ -39,6 +38,7 @@ class FormatsPageWidget extends ConsumerWidget {
     }
 
     return SingleChildScrollView(
+      key: const PageStorageKey('formats'),
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -67,16 +67,7 @@ class FormatsPageWidget extends ConsumerWidget {
                 return MediaCard.small(
                   media: media,
                   onTap: () => nav.goToMediaDetail(media),
-                  onPlay: () async {
-                    try {
-                      final detail = await library_api.getMediaDetails(mediaPath: media.path);
-                      final target = await resolvePlayTarget(detail);
-                      if (target == null) return;
-                      nav.goToPlayer(detail, target.file, target.playlist, target.index);
-                    } catch (e) {
-                      ref.read(toastProvider.notifier).show('Could not load media: $e', type: ToastType.error);
-                    }
-                  },
+                  onPlay: () => playMedia(media, ref),
                 );
               },
             ),
@@ -174,17 +165,21 @@ class FormatsPageWidget extends ConsumerWidget {
             final msg = data['message'] as String? ?? 'Unknown error';
             toast.show('Processing error: $msg', type: ToastType.error);
           } else if (type == 'progress') {
-            final current = data['current'] as int? ?? 0;
+            final processed = data['done'] as int? ?? 0;
             final total = data['total'] as int? ?? 0;
+            final title = data['title'] as String?;
             if (total > 1) {
-              toast.show('Processing file $current of $total...', type: ToastType.info);
+              toast.show('Processing $processed of $total${title != null ? ': $title' : ''}...', type: ToastType.info);
+            }
+            // Refresh incrementally so new items appear as they're processed
+            if (processed % 3 == 0 || processed == total) {
+              ref.read(libraryProvider.notifier).refresh();
             }
           }
         } catch (e) {
           debugPrint('[formats] Failed to parse progress event: $e');
         }
       },
-      onDone: () {},
       onError: (e) {
         toast.show('Processing failed: $e', type: ToastType.error);
       },

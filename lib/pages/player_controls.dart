@@ -2,15 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:reel/providers/playback_provider.dart';
 import 'package:reel/theme/app_theme.dart';
-
-/// Format a Duration as HH:MM:SS or MM:SS.
-String formatDuration(Duration d) {
-  final h = d.inHours;
-  final m = d.inMinutes.remainder(60);
-  final s = d.inSeconds.remainder(60);
-  if (h > 0) return '${h.toString().padLeft(2, '0')}:${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
-  return '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
-}
+import 'package:reel/utils/time_format.dart';
 
 // ---------------------------------------------------------------------------
 // Icon Button — minimal, no tooltip noise
@@ -112,7 +104,12 @@ class ControlsOverlay extends ConsumerWidget {
 
             // Center play/pause (only shown when paused)
             if (!state.playing)
-              const Center(child: _CenterPlayIcon()),
+              Center(
+                child: GestureDetector(
+                  onTap: () => ref.read(playbackProvider.notifier).togglePlay(),
+                  child: const _CenterPlayIcon(),
+                ),
+              ),
 
             // Bottom bar: progress + buttons
             Positioned(

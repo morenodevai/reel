@@ -10,6 +10,8 @@ import 'package:reel/providers/navigation_provider.dart';
 import 'package:reel/providers/playback_provider.dart';
 import 'package:reel/src/rust/db/watch_progress.dart';
 import 'package:reel/pages/media_detail_widgets.dart';
+import 'package:reel/pages/edit_media_dialog.dart';
+import 'package:reel/providers/library_provider.dart';
 import 'package:reel/theme/app_theme.dart';
 
 /// Media detail page showing full metadata, files, and episode list.
@@ -145,6 +147,7 @@ class _MediaDetailPageWidgetState
             onReveal: () => _revealInExplorer(detail.path),
             onDownloadSubs: () => _handleDownloadSubs(detail.path),
             downloadingSubs: _downloadingSubs,
+            onEdit: () => _handleEdit(detail),
             onRestartSeason: isTV ? () => _handleRestartSeason(detail, currentEpisodes) : null,
             onRestartShow: isTV ? () => _handleRestartShow(detail) : null,
           ),
@@ -221,6 +224,17 @@ class _MediaDetailPageWidgetState
         ],
       ),
     );
+  }
+
+  Future<void> _handleEdit(MediaDetail detail) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => EditMediaDialog(detail: detail),
+    );
+    if (result == true && mounted) {
+      ref.read(libraryProvider.notifier).refresh();
+      ref.read(navigationProvider.notifier).pop();
+    }
   }
 
   Future<void> _handlePlay(MediaDetail detail) async {

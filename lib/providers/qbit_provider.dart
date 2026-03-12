@@ -115,7 +115,7 @@ class QbitState {
       other is QbitState && running == other.running && status == other.status;
 
   @override
-  int get hashCode => running.hashCode ^ status.hashCode;
+  int get hashCode => Object.hash(running, status);
 }
 
 final qbitProvider = NotifierProvider<QbitNotifier, QbitState>(QbitNotifier.new);

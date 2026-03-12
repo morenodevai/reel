@@ -1,6 +1,32 @@
 /// ffprobe integration — extract container metadata from video files.
 
+use serde::{Deserialize, Serialize};
 use std::path::Path;
+
+/// Text-based subtitle codecs that can be rendered directly by players.
+/// Image-based codecs (hdmv_pgs_subtitle, dvd_subtitle) are bitmap overlays — they exist
+/// but can't be extracted to .srt, so they don't replace a downloadable text sub.
+const TEXT_SUB_CODECS: &[&str] = &[
+    "subrip", "ass", "ssa", "webvtt", "mov_text",
+    "text", "subviewer", "subviewer1", "microdvd",
+    "jacosub", "sami", "realtext", "stl", "pjs",
+];
+
+/// A subtitle stream embedded in the media container.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EmbeddedSubtitle {
+    /// ISO 639-2/B lowercase (e.g. "eng", "spa"), or "und" if untagged.
+    pub language: String,
+    /// ffprobe codec_name (e.g. "subrip", "ass", "hdmv_pgs_subtitle").
+    pub codec: String,
+    /// True for text-based codecs that players can render as searchable text.
+    /// False for image-based codecs (PGS, VobSub) that are bitmap overlays.
+    pub is_text_based: bool,
+    /// True if the stream's disposition has forced=1. Forced subs only cover
+    /// foreign-language dialogue, not full subtitles — they should NOT prevent
+    /// downloading full subs for a language.
+    pub is_forced: bool,
+}
 
 /// Metadata extracted from a media container via ffprobe.
 pub struct ProbeMetadata {
@@ -9,6 +35,7 @@ pub struct ProbeMetadata {
     pub audio_languages: Vec<String>,
     pub has_japanese_audio: bool,
     pub duration_secs: Option<f64>,
+    pub subtitle_streams: Vec<EmbeddedSubtitle>,
 }
 
 /// Get path to the bundled ffprobe binary in the app's config directory.
@@ -93,33 +120,52 @@ pub fn probe_file_metadata(video_path: &Path) -> Option<ProbeMetadata> {
         .and_then(|s| s.parse::<f64>().ok());
 
     let mut audio_languages = Vec::new();
+    let mut subtitle_streams = Vec::new();
+
     if let Some(streams) = json.get("streams").and_then(|s| s.as_array()) {
         for stream in streams {
-            if stream.get("codec_type").and_then(|v| v.as_str()) != Some("audio") {
-                continue;
-            }
-            if let Some(lang) = stream
-                .get("tags")
-                .and_then(|t| {
-                    t.get("language")
-                        .or_else(|| t.get("LANGUAGE"))
-                        .or_else(|| t.get("Language"))
-                })
-                .and_then(|v| v.as_str())
-            {
-                let lang_lower = lang.to_lowercase();
-                if lang_lower != "und" && lang_lower != "unk" {
-                    audio_languages.push(lang_lower);
+            let codec_type = stream.get("codec_type").and_then(|v| v.as_str());
+
+            match codec_type {
+                Some("audio") => {
+                    if let Some(lang) = stream_language(stream) {
+                        audio_languages.push(lang);
+                    }
                 }
+                Some("subtitle") => {
+                    let codec = stream
+                        .get("codec_name")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("unknown")
+                        .to_lowercase();
+
+                    // Untagged/unknown streams get "und" — they'll never match a config
+                    // language, so they won't incorrectly prevent subtitle downloads.
+                    let language = stream_language(stream).unwrap_or_else(|| "und".to_string());
+
+                    let is_forced = stream
+                        .get("disposition")
+                        .and_then(|d| d.get("forced"))
+                        .and_then(|v| v.as_i64())
+                        == Some(1);
+
+                    let is_text_based = TEXT_SUB_CODECS.contains(&codec.as_str());
+
+                    subtitle_streams.push(EmbeddedSubtitle {
+                        language,
+                        codec,
+                        is_text_based,
+                        is_forced,
+                    });
+                }
+                _ => {}
             }
         }
     }
 
-    let has_japanese_audio = audio_languages
-        .iter()
-        .any(|l| l == "jpn" || l == "ja" || l == "japanese" || l == "jp");
+    let has_japanese_audio = audio_languages.iter().any(|l| l == "jpn");
 
-    if title.is_none() && year.is_none() && audio_languages.is_empty() {
+    if title.is_none() && year.is_none() && audio_languages.is_empty() && subtitle_streams.is_empty() {
         return None;
     }
 
@@ -129,5 +175,27 @@ pub fn probe_file_metadata(video_path: &Path) -> Option<ProbeMetadata> {
         audio_languages,
         has_japanese_audio,
         duration_secs,
+        subtitle_streams,
     })
+}
+
+/// Extract and normalize a language tag from a stream, checking common casing variants.
+/// Normalizes ISO 639-2/T codes to 639-2/B (e.g. "fra"→"fre", "deu"→"ger") so that
+/// comparisons against config language codes (which use 639-2/B) work correctly.
+/// Returns None for "und"/"unk" (unknown/undefined).
+fn stream_language(stream: &serde_json::Value) -> Option<String> {
+    let lang = stream
+        .get("tags")
+        .and_then(|t| {
+            t.get("language")
+                .or_else(|| t.get("LANGUAGE"))
+                .or_else(|| t.get("Language"))
+        })
+        .and_then(|v| v.as_str())?;
+
+    let lang_lower = lang.to_lowercase();
+    if lang_lower == "und" || lang_lower == "unk" {
+        return None;
+    }
+    Some(crate::subtitles::normalize_lang(&lang_lower))
 }

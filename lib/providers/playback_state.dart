@@ -126,8 +126,10 @@ class PlayTarget {
 /// Determine the right file to play for a given media.
 ///
 /// Movies: plays the first (usually only) file.
-/// Series: finds the next unwatched/in-progress episode based on watch history,
-/// scopes the playlist to that episode's season.
+/// Series: finds the most recently watched episode by timestamp.
+/// If in-progress, resumes it. If completed, plays the next episode.
+/// Falls back to S01E01 if no progress exists or the series is finished.
+/// Playlist is scoped to the target episode's season.
 Future<PlayTarget?> resolvePlayTarget(MediaDetail detail) async {
   if (detail.files.isEmpty) return null;
 
@@ -139,7 +141,6 @@ Future<PlayTarget?> resolvePlayTarget(MediaDetail detail) async {
     });
 
   if (detail.mediaType != 'tv') {
-    // Movie — single file, no season scoping
     return PlayTarget(file: sorted.first, playlist: sorted, index: 0);
   }
 
@@ -151,34 +152,34 @@ Future<PlayTarget?> resolvePlayTarget(MediaDetail detail) async {
     debugPrint('[playback] Failed to load watch progress for play target: $e');
   }
 
-  final progressMap = {for (final p in allProgress) p.filePath: p};
+  // Sort progress by lastWatched descending to find the most recently touched episode.
+  // Try each entry in case the most recent one references a file that no longer exists.
+  final sortedProgress = List<WatchProgress>.from(allProgress)
+    ..sort((a, b) => b.lastWatched.compareTo(a.lastWatched));
 
-  // Find first episode that is either unwatched or in-progress
   MediaFile? target;
-  for (final f in sorted) {
-    final wp = progressMap[f.path];
-    if (wp == null || (!wp.completed && wp.positionSeconds < 5.0)) {
-      // Never watched or barely started — play this one
-      target = f;
-      break;
+  for (final progress in sortedProgress) {
+    final idx = sorted.indexWhere((f) => f.path == progress.filePath);
+    if (idx < 0) continue; // file no longer in library, skip
+
+    if (!progress.completed) {
+      target = sorted[idx];
+    } else if (idx + 1 < sorted.length) {
+      target = sorted[idx + 1];
     }
-    if (!wp.completed) {
-      // In progress — resume this one
-      target = f;
-      break;
-    }
+    break;
   }
 
-  // All completed — restart from S01E01
-  target ??= sorted.first;
+  // No valid progress or series fully completed — start from S01E01
+  final resolved = target ?? sorted.first;
 
   // Scope playlist to the target's season
-  final seasonFiles = sorted.where((f) => f.season == target!.season).toList();
-  final idx = seasonFiles.indexWhere((f) => f.path == target!.path);
+  final seasonFiles = sorted.where((f) => f.season == resolved.season).toList();
+  final seasonIdx = seasonFiles.indexWhere((f) => f.path == resolved.path);
 
   return PlayTarget(
-    file: target,
+    file: resolved,
     playlist: seasonFiles,
-    index: idx >= 0 ? idx : 0,
+    index: seasonIdx >= 0 ? seasonIdx : 0,
   );
 }

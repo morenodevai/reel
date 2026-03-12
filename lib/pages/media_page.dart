@@ -5,8 +5,8 @@ import 'package:reel/src/rust/api/library_api.dart' as library_api;
 import 'package:reel/providers/navigation_provider.dart';
 import 'package:reel/components/media_card.dart';
 import 'package:reel/components/loading_skeleton.dart';
-import 'package:reel/providers/playback_provider.dart';
 import 'package:reel/providers/toast_provider.dart';
+import 'package:reel/utils/play_media.dart';
 
 /// Grid page showing all media items in a genre, with infinite scroll.
 class MediaPageWidget extends ConsumerStatefulWidget {
@@ -23,28 +23,21 @@ class _MediaPageWidgetState extends ConsumerState<MediaPageWidget> {
   bool _hasMore = true;
   bool _loading = true;
   bool _loadingMore = false;
-  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
     _loadPage(0);
-    _scrollController.addListener(_onScroll);
   }
 
-  @override
-  void dispose() {
-    _scrollController.dispose();
-    super.dispose();
-  }
-
-  void _onScroll() {
-    if (_scrollController.position.pixels >=
-            _scrollController.position.maxScrollExtent - 300 &&
+  bool _onScroll(ScrollNotification notification) {
+    if (notification.metrics.pixels >=
+            notification.metrics.maxScrollExtent - 300 &&
         _hasMore &&
         !_loadingMore) {
       _loadPage(_items.length);
     }
+    return false;
   }
 
   Future<void> _loadPage(int offset) async {
@@ -86,20 +79,6 @@ class _MediaPageWidgetState extends ConsumerState<MediaPageWidget> {
     }
   }
 
-  Future<void> _playMedia(MediaInfo media) async {
-    try {
-      final detail = await library_api.getMediaDetails(mediaPath: media.path);
-      if (!mounted) return;
-      final target = await resolvePlayTarget(detail);
-      if (target == null || !mounted) return;
-      ref.read(navigationProvider.notifier).goToPlayer(detail, target.file, target.playlist, target.index);
-    } catch (e) {
-      if (mounted) {
-        ref.read(toastProvider.notifier).show('Could not load media: $e', type: ToastType.error);
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     if (_loading && _items.isEmpty) {
@@ -121,51 +100,54 @@ class _MediaPageWidgetState extends ConsumerState<MediaPageWidget> {
                 crossAxisCount;
         final cardHeight = cardWidth * 1.5; // 2:3 aspect ratio
 
-        return CustomScrollView(
-          controller: _scrollController,
-          slivers: [
-            SliverPadding(
-              padding: const EdgeInsets.all(16),
-              sliver: SliverGrid(
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) {
-                    final media = _items[index];
-                    return MediaCard(
-                      media: media,
-                      width: cardWidth,
-                      height: cardHeight,
-                      onTap: () {
-                        ref.read(navigationProvider.notifier).goToMediaDetail(media);
-                      },
-                      onPlay: () => _playMedia(media),
-                    );
-                  },
-                  childCount: _items.length,
-                ),
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: crossAxisCount,
-                  mainAxisSpacing: spacing,
-                  crossAxisSpacing: spacing,
-                  childAspectRatio: cardWidth / (cardHeight + 40), // account for title text
-                ),
-              ),
-            ),
-
-            // Loading spinner at bottom
-            if (_hasMore)
-              const SliverToBoxAdapter(
-                child: Padding(
-                  padding: EdgeInsets.all(24),
-                  child: Center(
-                    child: SizedBox(
-                      width: 24,
-                      height: 24,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    ),
+        return NotificationListener<ScrollNotification>(
+          onNotification: _onScroll,
+          child: CustomScrollView(
+            key: PageStorageKey('media:${widget.genrePath}'),
+            slivers: [
+              SliverPadding(
+                padding: const EdgeInsets.all(16),
+                sliver: SliverGrid(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) {
+                      final media = _items[index];
+                      return MediaCard(
+                        media: media,
+                        width: cardWidth,
+                        height: cardHeight,
+                        onTap: () {
+                          ref.read(navigationProvider.notifier).goToMediaDetail(media);
+                        },
+                        onPlay: () => playMedia(media, ref, isMounted: () => mounted),
+                      );
+                    },
+                    childCount: _items.length,
+                  ),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: crossAxisCount,
+                    mainAxisSpacing: spacing,
+                    crossAxisSpacing: spacing,
+                    childAspectRatio: cardWidth / (cardHeight + 40), // account for title text
                   ),
                 ),
               ),
-          ],
+
+              // Loading spinner at bottom
+              if (_hasMore)
+                const SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.all(24),
+                    child: Center(
+                      child: SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
         );
       },
     );

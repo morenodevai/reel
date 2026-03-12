@@ -54,6 +54,8 @@ pub struct AnalysisResult {
     /// True if the source folder contains exactly one video (dedicated folder).
     pub is_dedicated_folder: bool,
     pub confidence: f32,
+    /// Subtitle streams embedded in the container, detected via ffprobe.
+    pub embedded_subtitles: Vec<subtitles::EmbeddedSubtitle>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -571,6 +573,19 @@ fn analyze_single_file(
         final_title, final_year, &dest_path, subtitle_files.len(), junk_files.len(),
         companion_scan.image_files.len(), companion_scan.is_dedicated_folder);
 
+    let embedded_subtitles = probe_data
+        .map(|p| p.subtitle_streams)
+        .unwrap_or_default();
+
+    if !embedded_subtitles.is_empty() {
+        log::info!("[analyze] Embedded subtitle streams: {}",
+            embedded_subtitles.iter()
+                .map(|e| format!("{}:{}{}", e.language, e.codec, if e.is_forced { " (forced)" } else { "" }))
+                .collect::<Vec<_>>()
+                .join(", "),
+        );
+    }
+
     AnalysisResult {
         source_path: video_path.to_string_lossy().to_string(),
         dest_path,
@@ -589,6 +604,7 @@ fn analyze_single_file(
         companion_images: companion_scan.image_files,
         is_dedicated_folder: companion_scan.is_dedicated_folder,
         confidence: id_confidence,
+        embedded_subtitles,
     }
 }
 
@@ -898,8 +914,36 @@ fn process_single_file(
     }
 
     // 7. Download missing subs if enabled
-    if auto_download_subs && analysis.subtitle_files.is_empty() {
+    //
+    // Per-language decision: skip download if the container already has a non-forced,
+    // text-based subtitle stream for the requested language, OR if an external subtitle
+    // file was already found. Image-based subs (PGS/VobSub) and forced subs don't count
+    // because they can't replace a full downloadable text subtitle.
+    if auto_download_subs {
+        let embedded = &analysis.embedded_subtitles;
+
         for lang in subtitle_languages {
+            // Skip if we already have an external subtitle file for this language
+            if !analysis.subtitle_files.is_empty() {
+                let has_external = analysis.subtitle_files.iter().any(|sub| {
+                    let detected = subtitles::detect_language(sub);
+                    detected == *lang || (detected == "und" && subtitle_languages.len() == 1)
+                });
+                if has_external {
+                    log::info!("[process] Skipping {} subtitle download — external sub file exists", lang);
+                    continue;
+                }
+            }
+
+            // Skip if container has a non-forced, text-based subtitle for this language
+            let has_embedded = embedded.iter().any(|e| {
+                e.language == *lang && e.is_text_based && !e.is_forced
+            });
+            if has_embedded {
+                log::info!("[process] Skipping {} subtitle download — embedded text sub exists in container", lang);
+                continue;
+            }
+
             log::info!("[process] Downloading {} subtitle for: {}", lang, analysis.dest_path);
             match subtitles::download_subtitle(dest_path, lang, opensubs_key) {
                 Ok(sub_path) => {
@@ -991,8 +1035,12 @@ pub fn edit_and_relocate(edit: &EditRequest, library_path: &str) -> Result<trans
         .lock()
         .map_err(|e| format!("Pipeline lock error: {}", e))?;
 
-    // 2. Look up existing transaction
-    let old_txn = transaction::get_transaction_by_id(&edit.transaction_id)?;
+    // 2. Look up existing transaction (by ID, or by dest_path if not a UUID)
+    let old_txn = match transaction::get_transaction_by_id(&edit.transaction_id) {
+        Ok(txn) => txn,
+        Err(_) => transaction::get_transaction_by_dest(&edit.transaction_id)
+            .ok_or_else(|| format!("No transaction found for: {}", edit.transaction_id))?,
+    };
     if old_txn.undone {
         return Err("Transaction has been undone".to_string());
     }
@@ -1033,7 +1081,7 @@ pub fn edit_and_relocate(edit: &EditRequest, library_path: &str) -> Result<trans
     // 6. If same path → just update metadata + lock, no file move needed
     if new_dest == old_txn.dest_path {
         transaction::update_transaction_metadata(
-            &edit.transaction_id,
+            &old_txn.id,
             &edit.title,
             edit.year,
             &edit.format,
@@ -1041,8 +1089,8 @@ pub fn edit_and_relocate(edit: &EditRequest, library_path: &str) -> Result<trans
             edit.tmdb_id,
             edit.poster_url.as_deref(),
         )?;
-        transaction::lock_transactions(&[edit.transaction_id.clone()])?;
-        return Ok(transaction::get_transaction_by_id(&edit.transaction_id)?);
+        transaction::lock_transactions(&[old_txn.id.clone()])?;
+        return Ok(transaction::get_transaction_by_id(&old_txn.id)?);
     }
 
     // 7. Check destination conflict
@@ -1080,7 +1128,7 @@ pub fn edit_and_relocate(edit: &EditRequest, library_path: &str) -> Result<trans
     let new_stem = new_dest_path.file_stem().and_then(|s| s.to_str()).unwrap_or("");
     let old_dir = old_path.parent().unwrap_or(Path::new("."));
     let new_dir = new_dest_path.parent().unwrap_or(Path::new("."));
-    let sub_paths = transaction::get_subtitle_paths(&edit.transaction_id);
+    let sub_paths = transaction::get_subtitle_paths(&old_txn.id);
 
     for sub_path_str in &sub_paths {
         let sub_path = Path::new(sub_path_str);
@@ -1116,7 +1164,7 @@ pub fn edit_and_relocate(edit: &EditRequest, library_path: &str) -> Result<trans
 
     // Update subtitle DB records to point to new paths
     if let Err(e) = transaction::update_subtitle_paths(
-        &edit.transaction_id,
+        &old_txn.id,
         old_stem,
         new_stem,
         &new_dir.to_string_lossy(),
@@ -1128,11 +1176,11 @@ pub fn edit_and_relocate(edit: &EditRequest, library_path: &str) -> Result<trans
     clean_empty_dirs(old_dir, Path::new(library_path));
 
     // 12. Mark old transaction as undone, record new one
-    transaction::mark_undone(&edit.transaction_id)?;
+    transaction::mark_undone(&old_txn.id)?;
 
     // Reassign subtitle records to the new transaction
     let new_txn_id = uuid::Uuid::new_v4().to_string();
-    if let Err(e) = transaction::reassign_subtitle_records(&edit.transaction_id, &new_txn_id) {
+    if let Err(e) = transaction::reassign_subtitle_records(&old_txn.id, &new_txn_id) {
         log::error!("[edit] Failed to reassign subtitle records: {}", e);
     }
 

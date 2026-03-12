@@ -161,7 +161,9 @@ pub fn init_classifier() -> Result<(), String> {
     let model_path = get_model_path()?;
     log::info!("[ai] Loading model from {}", model_path.display());
 
-    let classifier = LocalClassifier::new(model_path.to_str().unwrap())?;
+    let path_str = model_path.to_str()
+        .ok_or_else(|| format!("Model path is not valid UTF-8: {}", model_path.display()))?;
+    let classifier = LocalClassifier::new(path_str)?;
 
     let mut guard = AI_CLASSIFIER.lock().map_err(|_| "Lock error")?;
     *guard = Some(classifier);

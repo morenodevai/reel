@@ -6,6 +6,7 @@ import 'package:reel/src/rust/api/history_api.dart' as history_api;
 import 'package:reel/src/rust/api/review_api.dart' as review_api;
 import 'package:reel/providers/toast_provider.dart';
 import 'package:reel/providers/library_provider.dart';
+import 'package:reel/utils/clear_pending.dart';
 import 'package:reel/components/empty_state.dart';
 import 'package:reel/components/loading_skeleton.dart';
 import 'package:reel/theme/app_theme.dart';
@@ -25,28 +26,21 @@ class _HistoryPageWidgetState extends ConsumerState<HistoryPageWidget> {
   bool _loading = true;
   bool _loadingMore = false;
   String? _undoingId;
-  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
     _loadPage(0);
-    _scrollController.addListener(_onScroll);
   }
 
-  @override
-  void dispose() {
-    _scrollController.dispose();
-    super.dispose();
-  }
-
-  void _onScroll() {
-    if (_scrollController.position.pixels >=
-            _scrollController.position.maxScrollExtent - 300 &&
+  bool _onScroll(ScrollNotification notification) {
+    if (notification.metrics.pixels >=
+            notification.metrics.maxScrollExtent - 300 &&
         _hasMore &&
         !_loadingMore) {
       _loadPage(_items.length);
     }
+    return false;
   }
 
   Future<void> _loadPage(int offset) async {
@@ -80,7 +74,6 @@ class _HistoryPageWidgetState extends ConsumerState<HistoryPageWidget> {
 
   /// Approves all currently-loaded items. Items beyond the scroll window
   /// are not affected — the user must scroll to load more first.
-  // TODO: Add a bulk lock_all_transactions() Rust API to avoid this limitation.
   Future<void> _handleApproveAll() async {
     final toast = ref.read(toastProvider.notifier);
     try {
@@ -94,17 +87,8 @@ class _HistoryPageWidgetState extends ConsumerState<HistoryPageWidget> {
   }
 
   Future<void> _handleClearAll() async {
-    final toast = ref.read(toastProvider.notifier);
-    try {
-      final result = await review_api.clearAllPending();
+    if (await clearAllPendingAndReport(ref)) {
       setState(() => _items.clear());
-      ref.read(libraryProvider.notifier).refresh();
-      final msg = result.failed > 0
-          ? 'Cleared ${result.succeeded} items (${result.failed} failed to undo)'
-          : 'Cleared ${result.succeeded} items -- files moved back';
-      toast.show(msg, type: result.failed > 0 ? ToastType.error : ToastType.success);
-    } catch (e) {
-      toast.show('Clear failed: $e', type: ToastType.error);
     }
   }
 
@@ -176,31 +160,34 @@ class _HistoryPageWidgetState extends ConsumerState<HistoryPageWidget> {
 
         // List
         Expanded(
-          child: ListView.builder(
-            controller: _scrollController,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemCount: _items.length + (_hasMore ? 1 : 0),
-            itemBuilder: (context, index) {
-              if (index == _items.length) {
-                return const Padding(
-                  padding: EdgeInsets.all(24),
-                  child: Center(
-                    child: SizedBox(
-                      width: 24,
-                      height: 24,
-                      child: CircularProgressIndicator(strokeWidth: 2),
+          child: NotificationListener<ScrollNotification>(
+            onNotification: _onScroll,
+            child: ListView.builder(
+              key: const PageStorageKey('history'),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              itemCount: _items.length + (_hasMore ? 1 : 0),
+              itemBuilder: (context, index) {
+                if (index == _items.length) {
+                  return const Padding(
+                    padding: EdgeInsets.all(24),
+                    child: Center(
+                      child: SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
                     ),
-                  ),
-                );
-              }
+                  );
+                }
 
-              final txn = _items[index];
-              return _HistoryItemRow(
-                transaction: txn,
-                undoing: _undoingId == txn.id,
-                onUndo: () => _handleUndo(txn.id),
-              );
-            },
+                final txn = _items[index];
+                return _HistoryItemRow(
+                  transaction: txn,
+                  undoing: _undoingId == txn.id,
+                  onUndo: () => _handleUndo(txn.id),
+                );
+              },
+            ),
           ),
         ),
       ],

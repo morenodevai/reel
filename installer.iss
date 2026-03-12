@@ -2,12 +2,12 @@
 AppId={{667285C4-2954-457A-9BFD-A9421995974F}
 AppName=Reel
 ; Keep in sync with pubspec.yaml version
-AppVersion=2.2.0
+AppVersion=2.6.0
 AppPublisher=Reel
 DefaultDirName={autopf}\Reel
 DefaultGroupName=Reel
 OutputDir=installer_output
-OutputBaseFilename=Reel_2.2.0_x64-setup
+OutputBaseFilename=Reel_2.6.0_x64-setup
 Compression=lzma2
 SolidCompression=yes
 ArchitecturesAllowed=x64compatible

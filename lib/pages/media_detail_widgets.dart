@@ -1,20 +1,10 @@
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:reel/src/rust/library.dart';
 import 'package:reel/src/rust/db/watch_progress.dart';
 import 'package:reel/components/loading_skeleton.dart';
 import 'package:reel/theme/app_theme.dart';
-
-/// Formats a byte count into a human-readable string (e.g. "1.5 GB").
-String formatBytes(BigInt bytes) {
-  final b = bytes.toDouble();
-  if (b <= 0) return '0 B';
-  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-  final i = (math.log(b) / math.log(1024)).floor().clamp(0, sizes.length - 1);
-  final val = b / math.pow(1024, i);
-  return '${val.toStringAsFixed(i > 1 ? 1 : 0)} ${sizes[i]}';
-}
+import 'package:reel/utils/format_bytes.dart';
 
 // ---------------------------------------------------------------------------
 // Hero Section
@@ -29,6 +19,7 @@ class HeroSection extends StatelessWidget {
   final bool downloadingSubs;
   final VoidCallback? onRestartSeason;
   final VoidCallback? onRestartShow;
+  final VoidCallback? onEdit;
 
   const HeroSection({
     super.key,
@@ -40,6 +31,7 @@ class HeroSection extends StatelessWidget {
     required this.downloadingSubs,
     this.onRestartSeason,
     this.onRestartShow,
+    this.onEdit,
   });
 
   @override
@@ -180,6 +172,12 @@ class HeroSection extends StatelessWidget {
                       label: downloadingSubs ? 'Downloading...' : 'Get Subtitles',
                       onTap: downloadingSubs ? null : onDownloadSubs,
                     ),
+                    if (onEdit != null)
+                      DetailActionButton(
+                        icon: Icons.edit_outlined,
+                        label: 'Fix ID',
+                        onTap: onEdit,
+                      ),
                     if (onRestartSeason != null)
                       DetailActionButton(
                         icon: Icons.replay_rounded,
@@ -564,7 +562,7 @@ class DotSeparator extends StatelessWidget {
     return const Padding(
       padding: EdgeInsets.symmetric(horizontal: 6),
       child: Text(
-        '-',
+        '\u00B7',
         style: TextStyle(
           fontSize: 14,
           color: AppColors.textQuaternary,

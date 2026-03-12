@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:reel/src/rust/library.dart';
 import 'package:reel/src/rust/api/library_api.dart' as library_api;
 import 'package:reel/providers/navigation_provider.dart';
+import 'package:reel/utils/play_media.dart';
 import 'package:reel/components/genre_row.dart';
 import 'package:reel/components/empty_state.dart';
 import 'package:reel/components/loading_skeleton.dart';
@@ -71,6 +72,7 @@ class _GenrePageWidgetState extends ConsumerState<GenrePageWidget> {
     }
 
     return ListView.separated(
+      key: PageStorageKey('genre:${widget.formatPath}'),
       clipBehavior: Clip.none,
       padding: const EdgeInsets.symmetric(vertical: 16),
       itemCount: _genres!.length,
@@ -85,6 +87,7 @@ class _GenrePageWidgetState extends ConsumerState<GenrePageWidget> {
             genrePath: genre.path,
           ),
           onMediaTap: (media) => nav.goToMediaDetail(media),
+          onMediaPlay: (media) => playMedia(media, ref, isMounted: () => mounted),
         );
       },
     );
