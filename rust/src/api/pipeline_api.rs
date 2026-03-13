@@ -9,6 +9,8 @@ use crate::frb_generated::StreamSink;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+use crate::pipeline::CONFIDENCE_THRESHOLD;
+
 /// Find the common parent directory of multiple paths.
 fn common_parent_of<'a>(paths: impl Iterator<Item = &'a str>) -> String {
     let mut common: Option<PathBuf> = None;
@@ -106,16 +108,62 @@ pub fn process_background(
             analyses.push(analysis);
         }
 
+        // 2.5. Route low-confidence items to "Needs Review" staging area.
+        // Proposed metadata is preserved in the transaction DB so the review
+        // page can show rename previews and let the user confirm or correct.
+        let library_path = Path::new(&library);
+        let mut needs_review_count = 0u32;
+
+        for analysis in &mut analyses {
+            if analysis.confidence < CONFIDENCE_THRESHOLD {
+                // Reroute dest_path: keep title_folder and filename structure,
+                // but place under "Needs Review/Pending" instead of the guessed format/genre.
+                let proposed_format = analysis.format.clone();
+                let proposed_genre = analysis.genre.clone();
+                let dest = Path::new(&analysis.dest_path);
+                if let Ok(relative) = dest.strip_prefix(library_path) {
+                    let components: Vec<_> = relative.components().collect();
+                    // components[0]=format, [1]=genre, [2..]=title_folder/season/file
+                    if components.len() >= 3 {
+                        let mut new_dest = library_path.join("Needs Review").join("Pending");
+                        for c in &components[2..] {
+                            new_dest = new_dest.join(c);
+                        }
+                        analysis.dest_path = new_dest.to_string_lossy().to_string();
+                        analysis.format = "Needs Review".to_string();
+                        analysis.genre = "Pending".to_string();
+                        needs_review_count += 1;
+                        log::info!(
+                            "[triage] Low confidence ({:.2}) — routing to Needs Review: {} (proposed: {}/{})",
+                            analysis.confidence, analysis.title, proposed_format, proposed_genre,
+                        );
+                    } else {
+                        log::warn!(
+                            "[triage] Low confidence ({:.2}) but path too short to reroute: {}",
+                            analysis.confidence, analysis.dest_path,
+                        );
+                    }
+                } else {
+                    log::warn!(
+                        "[triage] Low confidence ({:.2}) but dest not in library: {}",
+                        analysis.confidence, analysis.dest_path,
+                    );
+                }
+            }
+        }
+
         // 3. Process files sequentially
         let batch_id = uuid::Uuid::new_v4().to_string();
         let mut succeeded = 0u32;
         let mut failed = 0u32;
 
         for (i, analysis) in analyses.iter().enumerate() {
+            let is_review = analysis.format == "Needs Review";
+            let download_subs = cfg.auto_download_subs && !is_review;
             match pipeline::process_single_file_pub(
                 analysis,
                 &batch_id,
-                cfg.auto_download_subs,
+                download_subs,
                 &cfg.subtitle_languages,
                 &cfg.opensubs_api_key,
                 &cleanup_root,
@@ -133,6 +181,7 @@ pub fn process_background(
                 "succeeded": succeeded,
                 "failed": failed,
                 "batch_id": batch_id,
+                "needs_review": is_review,
             }).to_string());
         }
 
@@ -143,6 +192,7 @@ pub fn process_background(
             "succeeded": succeeded,
             "failed": failed,
             "batch_id": batch_id,
+            "needs_review_count": needs_review_count,
         }).to_string());
     });
 

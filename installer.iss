@@ -66,4 +66,4 @@ begin
 end;
 
 [Run]
-Filename: "{app}\reel.exe"; Description: "Launch Reel"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\reel.exe"; Description: "Launch Reel"; Flags: nowait postinstall

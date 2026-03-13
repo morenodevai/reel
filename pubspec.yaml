@@ -40,6 +40,9 @@ dependencies:
   # Version display
   package_info_plus: ^8.0.0
 
+  # SHA-256 verification for auto-updater
+  crypto: ^3.0.0
+
   # Icons
   cupertino_icons: ^1.0.8
 

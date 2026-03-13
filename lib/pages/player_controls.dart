@@ -555,16 +555,15 @@ class SubtitlePicker extends ConsumerWidget {
         n.disableSubtitles();
       } else if (value.startsWith('embedded:')) {
         final id = value.substring(9);
-        try {
-          n.setSubtitleTrack(s.subtitleTracks.firstWhere((t) => t.id == id));
-        } catch (e) {
-          debugPrint('[player] Subtitle track lookup failed: $e');
+        final matches = s.subtitleTracks.where((t) => t.id == id);
+        if (matches.isNotEmpty) {
+          n.setSubtitleTrack(matches.first);
         }
       } else if (value.startsWith('ext:')) {
-        try {
-          n.loadExternalSubtitle(s.externalSubs.firstWhere((e) => e.path == value.substring(4)));
-        } catch (e) {
-          debugPrint('[player] External subtitle lookup failed: $e');
+        final path = value.substring(4);
+        final matches = s.externalSubs.where((e) => e.path == path);
+        if (matches.isNotEmpty) {
+          n.loadExternalSubtitle(matches.first);
         }
       }
     });
@@ -625,12 +624,9 @@ class AudioPicker extends ConsumerWidget {
     ).then((value) {
       if (value == null) return;
       final s = ref.read(playbackProvider);
-      try {
-        ref.read(playbackProvider.notifier).setAudioTrack(
-          s.audioTracks.firstWhere((t) => t.id == value),
-        );
-      } catch (e) {
-        debugPrint('[player] Audio track lookup failed: $e');
+      final matches = s.audioTracks.where((t) => t.id == value);
+      if (matches.isNotEmpty) {
+        ref.read(playbackProvider.notifier).setAudioTrack(matches.first);
       }
     });
   }

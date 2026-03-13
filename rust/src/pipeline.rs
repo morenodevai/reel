@@ -20,6 +20,10 @@ static PIPELINE_LOCK: Lazy<Mutex<()>> = Lazy::new(|| Mutex::new(()));
 pub(crate) static PIPELINE_SYNC_LOCK: Lazy<std::sync::Mutex<()>> = Lazy::new(|| std::sync::Mutex::new(()));
 static CANCEL_FLAG: Lazy<AtomicBool> = Lazy::new(|| AtomicBool::new(false));
 
+/// Files below this confidence threshold are routed to "Needs Review" instead
+/// of being auto-organized. The user must confirm or correct the identification.
+pub const CONFIDENCE_THRESHOLD: f32 = 0.65;
+
 /// Guard to prevent duplicate background batch processing (drag events fire multiple times).
 static BG_PROCESSING: AtomicBool = AtomicBool::new(false);
 

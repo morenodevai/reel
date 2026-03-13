@@ -184,10 +184,8 @@ class _EditMediaDialogState extends State<EditMediaDialog> {
     } catch (e) {
       if (!mounted) return;
       if (saved > 0) {
-        setState(() => _error = 'Saved $saved of ${files.length} files. Error on remaining: $e');
-        // Still pop so library refreshes with partial changes
-        await Future.delayed(const Duration(seconds: 2));
-        if (mounted) Navigator.of(context).pop(true);
+        // Partial success — pop so library refreshes with changes made so far
+        Navigator.of(context).pop(true);
         return;
       }
       setState(() {

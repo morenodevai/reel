@@ -1,9 +1,11 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:path/path.dart' as p;
 import 'package:reel/src/rust/config.dart';
 import 'package:reel/src/rust/api/ai_api.dart' as ai_api;
 import 'package:reel/src/rust/api/qbit_api.dart' as qbit_api;
@@ -12,6 +14,7 @@ import 'package:reel/src/rust/api/config_api.dart' as config_api;
 import 'package:reel/providers/config_provider.dart';
 import 'package:reel/providers/toast_provider.dart';
 import 'package:reel/providers/qbit_provider.dart';
+import 'package:reel/core/updater/update_provider.dart';
 import 'package:reel/pages/settings_widgets.dart';
 import 'package:reel/theme/app_theme.dart';
 import 'package:reel/utils/config_copy.dart';
@@ -415,7 +418,23 @@ class _SettingsPageWidgetState extends ConsumerState<SettingsPageWidget> {
                     ),
                   ),
                 ),
+                const Divider(height: 24),
+                SettingRow(
+                  label: 'Logs',
+                  subtitle: _logDir,
+                  trailing: SmallButton(
+                    icon: Icons.folder_open_outlined,
+                    label: 'Open',
+                    onTap: _openLogFolder,
+                  ),
+                ),
               ]),
+
+              const SizedBox(height: 24),
+
+              // --- Updates section ---
+              const SectionHeader('Updates'),
+              _UpdateSection(appVersion: _appVersion),
 
               const SizedBox(height: 64),
             ],
@@ -510,6 +529,19 @@ class _SettingsPageWidgetState extends ConsumerState<SettingsPageWidget> {
     }
   }
 
+  String get _logDir {
+    final appData = Platform.environment['APPDATA'] ?? '';
+    return appData.isEmpty ? '' : p.join(appData, 'Reel');
+  }
+
+  void _openLogFolder() {
+    final dir = _logDir;
+    if (dir.isEmpty) return;
+    pipeline_api.revealInFinder(path: dir).catchError((e) {
+      debugPrint('[settings] Failed to open log folder: $e');
+    });
+  }
+
   Future<void> _handleRescan() async {
     _rescanClearTimer?.cancel();
     setState(() { _rescanning = true; _rescanStatus = 'Starting...'; });
@@ -539,6 +571,208 @@ class _SettingsPageWidgetState extends ConsumerState<SettingsPageWidget> {
       if (mounted) {
         setState(() { _rescanning = false; _rescanStatus = 'Error: $e'; });
       }
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Update Section
+// ---------------------------------------------------------------------------
+
+class _UpdateSection extends ConsumerStatefulWidget {
+  final String appVersion;
+  const _UpdateSection({required this.appVersion});
+
+  @override
+  ConsumerState<_UpdateSection> createState() => _UpdateSectionState();
+}
+
+class _UpdateSectionState extends ConsumerState<_UpdateSection> {
+  bool _showUrlField = false;
+  late TextEditingController _urlController;
+
+  @override
+  void initState() {
+    super.initState();
+    _urlController = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _urlController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final update = ref.watch(updateProvider);
+    final notifier = ref.read(updateProvider.notifier);
+
+    // Sync URL controller with state
+    if (_urlController.text != update.manifestUrl && !_showUrlField) {
+      _urlController.text = update.manifestUrl;
+    }
+
+    return SettingsCard(children: [
+      // Update URL configuration
+      SettingRow(
+        label: 'Update URL',
+        subtitle: update.manifestUrl.isEmpty ? 'Not configured' : null,
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (update.manifestUrl.isNotEmpty && !_showUrlField)
+              Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: Text(
+                  Uri.tryParse(update.manifestUrl)?.host ?? update.manifestUrl,
+                  style: const TextStyle(fontSize: 11, color: AppColors.textQuaternary),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            SmallButton(
+              icon: _showUrlField ? Icons.check : Icons.edit_outlined,
+              label: _showUrlField ? 'Save' : 'Edit',
+              onTap: () {
+                if (_showUrlField) {
+                  notifier.setManifestUrl(_urlController.text.trim());
+                }
+                setState(() => _showUrlField = !_showUrlField);
+              },
+            ),
+          ],
+        ),
+      ),
+      if (_showUrlField) ...[
+        const SizedBox(height: 8),
+        TextField(
+          controller: _urlController,
+          style: const TextStyle(fontSize: 12, color: AppColors.textPrimary),
+          decoration: InputDecoration(
+            hintText: 'https://example.com/latest.json',
+            hintStyle: const TextStyle(fontSize: 12, color: AppColors.textQuaternary),
+            isDense: true,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            filled: true,
+            fillColor: AppColors.surface,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: AppColors.border),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: AppColors.border),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: AppColors.primary),
+            ),
+          ),
+          onSubmitted: (v) {
+            notifier.setManifestUrl(v.trim());
+            setState(() => _showUrlField = false);
+          },
+        ),
+      ],
+
+      const Divider(height: 24),
+
+      // Update status
+      _buildUpdateStatus(update, notifier),
+    ]);
+  }
+
+  Widget _buildUpdateStatus(UpdateState update, UpdateNotifier notifier) {
+    switch (update.status) {
+      case UpdateStatus.idle:
+        return SettingRow(
+          label: 'Up to date',
+          subtitle: widget.appVersion.isNotEmpty ? 'v${widget.appVersion}' : null,
+          trailing: SmallButton(
+            icon: Icons.refresh,
+            label: 'Check',
+            onTap: update.manifestUrl.isNotEmpty ? () => notifier.checkForUpdate() : null,
+          ),
+        );
+
+      case UpdateStatus.checking:
+        return const SettingRow(
+          label: 'Checking for updates...',
+          trailing: SizedBox(
+            width: 16, height: 16,
+            child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.textQuaternary),
+          ),
+        );
+
+      case UpdateStatus.available:
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SettingRow(
+              label: 'Update available: v${update.info!.version}',
+              trailing: SmallButton(
+                icon: Icons.download,
+                label: 'Download',
+                onTap: () => notifier.downloadAndVerify(),
+              ),
+            ),
+            if (update.info!.releaseNotes.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                  update.info!.releaseNotes,
+                  style: const TextStyle(fontSize: 10, color: AppColors.textQuaternary),
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+          ],
+        );
+
+      case UpdateStatus.downloading:
+        final pct = (update.downloadProgress * 100).toInt();
+        return SettingRow(
+          label: 'Downloading... $pct%',
+          trailing: SizedBox(
+            width: 100,
+            child: LinearProgressIndicator(
+              value: update.downloadProgress,
+              backgroundColor: AppColors.surface,
+              color: AppColors.primary,
+              minHeight: 4,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+        );
+
+      case UpdateStatus.verifying:
+        return const SettingRow(
+          label: 'Verifying integrity...',
+          trailing: SizedBox(
+            width: 16, height: 16,
+            child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+          ),
+        );
+
+      case UpdateStatus.readyToInstall:
+        return SettingRow(
+          label: 'Ready to install v${update.info!.version}',
+          trailing: SmallButton(
+            icon: Icons.install_desktop,
+            label: 'Install & Restart',
+            onTap: () => notifier.installUpdate(),
+          ),
+        );
+
+      case UpdateStatus.error:
+        return SettingRow(
+          label: update.error ?? 'Update failed',
+          trailing: SmallButton(
+            icon: Icons.refresh,
+            label: 'Retry',
+            onTap: () => notifier.checkForUpdate(),
+          ),
+        );
     }
   }
 }

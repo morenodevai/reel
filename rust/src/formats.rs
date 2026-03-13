@@ -128,6 +128,11 @@ pub const FORMATS: &[FormatDefinition] = &[
         ],
         auto_create: true,
     },
+    FormatDefinition {
+        name: "Needs Review",
+        genres: &["Pending"],
+        auto_create: true,
+    },
 ];
 
 /// Map a TMDb genre ID to a genre name appropriate for the given format.

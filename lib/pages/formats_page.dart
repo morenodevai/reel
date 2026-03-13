@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -18,23 +19,34 @@ import 'package:reel/utils/play_media.dart';
 import 'package:reel/src/rust/api/pipeline_api.dart' as pipeline_api;
 import 'package:reel/src/rust/api/config_api.dart' as config_api;
 
-class FormatsPageWidget extends ConsumerWidget {
+class FormatsPageWidget extends ConsumerStatefulWidget {
   const FormatsPageWidget({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<FormatsPageWidget> createState() => _FormatsPageWidgetState();
+}
+
+class _FormatsPageWidgetState extends ConsumerState<FormatsPageWidget> {
+  StreamSubscription<String>? _processSub;
+
+  @override
+  void dispose() {
+    _processSub?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final config = ref.watch(configProvider).value;
     final library = ref.watch(libraryProvider);
     final nav = ref.read(navigationProvider.notifier);
 
-    // No library configured -- show empty state
     if (config?.libraryPath == null) {
       return const _NoLibraryState();
     }
 
-    // Loading
     if (library.loading) {
-      return _LoadingSkeleton();
+      return const _LoadingSkeleton();
     }
 
     return SingleChildScrollView(
@@ -43,12 +55,10 @@ class FormatsPageWidget extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Library path (clickable to reveal)
           if (config?.libraryPath != null)
             _LibraryPathRow(path: config!.libraryPath!),
           const SizedBox(height: 16),
 
-          // Recently Added row with dock magnification
           if (library.recentlyAdded.isNotEmpty) ...[
             DockRow(
               header: const Text(
@@ -74,14 +84,13 @@ class FormatsPageWidget extends ConsumerWidget {
             const SizedBox(height: 24),
           ],
 
-          // Format cards grid
           LayoutBuilder(
             builder: (context, constraints) {
               final crossAxisCount = constraints.maxWidth > 800 ? 3 : 2;
               return Wrap(
                 spacing: 12,
                 runSpacing: 12,
-                children: library.formats.map((format) {
+                children: library.formats.where((f) => f.name != 'Needs Review').map((format) {
                   final cardWidth =
                       (constraints.maxWidth - 12 * (crossAxisCount - 1)) /
                           crossAxisCount;
@@ -97,19 +106,18 @@ class FormatsPageWidget extends ConsumerWidget {
             },
           ),
 
-          // Drop zone
           const SizedBox(height: 24),
           DropZone(
             compact: library.formats.isNotEmpty,
-            onDrop: (paths) => _confirmAndProcess(context, paths, ref),
-            onBrowse: () => _handleBrowse(context, ref),
+            onDrop: (paths) => _confirmAndProcess(context, paths),
+            onBrowse: () => _handleBrowse(context),
           ),
         ],
       ),
     );
   }
 
-  Future<void> _confirmAndProcess(BuildContext context, List<String> paths, WidgetRef ref) async {
+  Future<void> _confirmAndProcess(BuildContext context, List<String> paths) async {
     final itemCount = paths.length;
     final label = itemCount == 1 ? paths.first.split(RegExp(r'[\\/]')).last : '$itemCount item(s)';
     final confirmed = await showDialog<bool>(
@@ -134,18 +142,19 @@ class FormatsPageWidget extends ConsumerWidget {
       ),
     );
     if (confirmed == true) {
-      _handleDrop(paths, ref);
+      _handleDrop(paths);
     }
   }
 
-  void _handleDrop(List<String> paths, WidgetRef ref) {
+  void _handleDrop(List<String> paths) {
     final toast = ref.read(toastProvider.notifier);
     toast.show('Processing ${paths.length} item(s)...', type: ToastType.info);
-    // Fire-and-forget: Rust-side try_start_bg_processing() prevents concurrent runs.
-    // Subscription not stored because this stateless page outlives processing.
-    pipeline_api.processBackground(paths: paths).listen(
+
+    // Cancel any prior subscription before starting a new one.
+    _processSub?.cancel();
+    _processSub = pipeline_api.processBackground(paths: paths).listen(
       (event) {
-        // Parse progress events for user feedback
+        if (!mounted) return;
         try {
           final data = event.isNotEmpty ? _parseJson(event) : <String, dynamic>{};
           final type = data['type'] as String?;
@@ -153,14 +162,27 @@ class FormatsPageWidget extends ConsumerWidget {
             final succeeded = data['succeeded'] as int? ?? 0;
             final failed = data['failed'] as int? ?? 0;
             final total = data['total'] as int? ?? 0;
+            final reviewCount = data['needs_review_count'] as int? ?? 0;
+            final batchId = data['batch_id'] as String?;
             if (total == 0) {
               toast.show('No new files to organize', type: ToastType.info);
+            } else if (reviewCount > 0) {
+              final autoCount = succeeded - reviewCount;
+              if (autoCount > 0) {
+                toast.show('Organized $autoCount file(s), $reviewCount need${reviewCount == 1 ? 's' : ''} review');
+              } else {
+                toast.show('$reviewCount file(s) need review', type: ToastType.info);
+              }
             } else if (failed == 0) {
               toast.show('Organized $succeeded file(s)');
             } else {
               toast.show('Organized $succeeded, $failed failed', type: ToastType.error);
             }
             ref.read(libraryProvider.notifier).refresh();
+            // Navigate to review page when items need user confirmation
+            if (reviewCount > 0 && batchId != null) {
+              ref.read(navigationProvider.notifier).goToReview([batchId]);
+            }
           } else if (type == 'error') {
             final msg = data['message'] as String? ?? 'Unknown error';
             toast.show('Processing error: $msg', type: ToastType.error);
@@ -171,7 +193,6 @@ class FormatsPageWidget extends ConsumerWidget {
             if (total > 1) {
               toast.show('Processing $processed of $total${title != null ? ': $title' : ''}...', type: ToastType.info);
             }
-            // Refresh incrementally so new items appear as they're processed
             if (processed % 3 == 0 || processed == total) {
               ref.read(libraryProvider.notifier).refresh();
             }
@@ -181,6 +202,7 @@ class FormatsPageWidget extends ConsumerWidget {
         }
       },
       onError: (e) {
+        if (!mounted) return;
         toast.show('Processing failed: $e', type: ToastType.error);
       },
     );
@@ -197,7 +219,7 @@ class FormatsPageWidget extends ConsumerWidget {
     }
   }
 
-  Future<void> _handleBrowse(BuildContext context, WidgetRef ref) async {
+  Future<void> _handleBrowse(BuildContext context) async {
     final result = await FilePicker.platform.pickFiles(
       allowMultiple: true,
       dialogTitle: 'Select media files to organize',
@@ -208,7 +230,7 @@ class FormatsPageWidget extends ConsumerWidget {
           .map((f) => f.path!)
           .toList();
       if (paths.isNotEmpty && context.mounted) {
-        await _confirmAndProcess(context, paths, ref);
+        await _confirmAndProcess(context, paths);
       }
     }
   }
@@ -306,6 +328,8 @@ class _LibraryPathRow extends StatelessWidget {
 }
 
 class _LoadingSkeleton extends StatelessWidget {
+  const _LoadingSkeleton();
+
   @override
   Widget build(BuildContext context) {
     return Padding(

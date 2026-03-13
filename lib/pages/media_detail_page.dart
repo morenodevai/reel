@@ -250,13 +250,13 @@ class _MediaDetailPageWidgetState
   }
 
   Future<void> _handleRestartSeason(MediaDetail detail, List<MediaFile> currentEpisodes) async {
-    for (final f in currentEpisodes) {
-      try {
-        await playback_api.setFileUnwatched(filePath: f.path);
-      } catch (e) {
-        debugPrint('[detail] Failed to unwatch ${f.path}: $e');
-      }
-    }
+    await Future.wait(
+      currentEpisodes.map((f) =>
+        playback_api.setFileUnwatched(filePath: f.path).catchError((e) {
+          debugPrint('[detail] Failed to unwatch ${f.path}: $e');
+        }),
+      ),
+    );
     if (!mounted) return;
     if (currentEpisodes.isNotEmpty) {
       ref.read(navigationProvider.notifier).goToPlayer(
@@ -266,13 +266,13 @@ class _MediaDetailPageWidgetState
   }
 
   Future<void> _handleRestartShow(MediaDetail detail) async {
-    for (final f in detail.files) {
-      try {
-        await playback_api.setFileUnwatched(filePath: f.path);
-      } catch (e) {
-        debugPrint('[detail] Failed to unwatch ${f.path}: $e');
-      }
-    }
+    await Future.wait(
+      detail.files.map((f) =>
+        playback_api.setFileUnwatched(filePath: f.path).catchError((e) {
+          debugPrint('[detail] Failed to unwatch ${f.path}: $e');
+        }),
+      ),
+    );
     if (!mounted) return;
     if (detail.files.isNotEmpty) {
       final sorted = List<MediaFile>.from(detail.files)

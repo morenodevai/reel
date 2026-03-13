@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:reel/src/rust/library.dart';
+import 'package:reel/components/poster_fallback.dart';
 import 'package:reel/theme/app_theme.dart';
 
 /// Card that displays a media item with poster, title, and year.
@@ -91,13 +92,13 @@ class _MediaCardState extends State<MediaCard> {
                                 ),
                               ),
                             ),
-                            errorWidget: (_, __, ___) => _FallbackPoster(
+                            errorWidget: (_, __, ___) => PosterFallback(compact: true,
                               title: media.title,
                               gradient: gradient,
                             ),
                           )
                         else
-                          _FallbackPoster(
+                          PosterFallback(compact: true,
                             title: media.title,
                             gradient: gradient,
                           ),
@@ -171,32 +172,3 @@ class _MediaCardState extends State<MediaCard> {
   }
 }
 
-class _FallbackPoster extends StatelessWidget {
-  final String title;
-  final List<Color> gradient;
-  const _FallbackPoster({required this.title, required this.gradient});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: gradient,
-        ),
-      ),
-      alignment: Alignment.bottomLeft,
-      padding: const EdgeInsets.all(12),
-      child: Text(
-        title,
-        style: const TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w500,
-          color: AppColors.textSecondary,
-          height: 1.3,
-        ),
-      ),
-    );
-  }
-}

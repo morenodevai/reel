@@ -3,6 +3,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:reel/src/rust/library.dart';
 import 'package:reel/src/rust/db/watch_progress.dart';
 import 'package:reel/components/loading_skeleton.dart';
+import 'package:reel/components/poster_fallback.dart';
 import 'package:reel/theme/app_theme.dart';
 import 'package:reel/utils/format_bytes.dart';
 
@@ -523,36 +524,6 @@ class _EpisodeRowState extends State<EpisodeRow> {
 // ---------------------------------------------------------------------------
 // Shared Widgets
 // ---------------------------------------------------------------------------
-
-class PosterFallback extends StatelessWidget {
-  final String title;
-  final List<Color> gradient;
-  const PosterFallback({super.key, required this.title, required this.gradient});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: gradient,
-        ),
-      ),
-      alignment: Alignment.bottomLeft,
-      padding: const EdgeInsets.all(16),
-      child: Text(
-        title,
-        style: const TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w500,
-          color: AppColors.textSecondary,
-          height: 1.3,
-        ),
-      ),
-    );
-  }
-}
 
 class DotSeparator extends StatelessWidget {
   const DotSeparator({super.key});
