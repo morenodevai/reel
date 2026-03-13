@@ -48,28 +48,42 @@ pub fn download_subtitle(
     let tmdb_id = extract_tmdb_id(title_dir);
     let is_tv = is_season_dir;
 
-    let search_url = if is_tv {
-        let (season, episode) = parse_episode_numbers(video_stem);
-        log::info!(
-            "[subtitle] Searching: title='{}' tmdb={:?} S{:?}E{:?} (TV)",
-            title, tmdb_id, season, episode
-        );
-        build_tv_search_url(&base, tmdb_id, title, season, episode)
-    } else {
-        log::info!(
-            "[subtitle] Searching: title='{}' tmdb={:?} (movie)",
-            title, tmdb_id
-        );
-        build_movie_search_url(&base, tmdb_id, title)
-    };
+    // Strategy 1: Hash-based search (finds subtitles pre-synced to this exact release)
+    let hash_data = hash_search(&client, &base, video_path, api_key);
 
-    let data = match os_search(&client, &search_url, api_key) {
-        Some(d) if !d.is_empty() => d,
-        _ => {
-            let fallback_url = format!("{}&query={}", base, urlencoding::encode(title));
-            match os_search(&client, &fallback_url, api_key) {
-                Some(d) if !d.is_empty() => d,
-                _ => return Err(format!("No subtitles found for \"{}\"", title)),
+    // Strategy 2: TMDB/title search (fallback — may need timing sync)
+    let data = if let Some(d) = hash_data {
+        d
+    } else {
+        let search_url = if is_tv {
+            let (season, episode) = parse_episode_numbers(video_stem);
+            log::info!(
+                "[subtitle] TMDB search: title='{}' tmdb={:?} S{:?}E{:?} (TV)",
+                title, tmdb_id, season, episode
+            );
+            build_tv_search_url(&base, tmdb_id, title, season, episode)
+        } else {
+            log::info!(
+                "[subtitle] TMDB search: title='{}' tmdb={:?} (movie)",
+                title, tmdb_id
+            );
+            build_movie_search_url(&base, tmdb_id, title)
+        };
+
+        match os_search(&client, &search_url, api_key) {
+            Some(d) if !d.is_empty() => {
+                log::info!("[subtitle] TMDB match for {}", video_stem);
+                d
+            }
+            _ => {
+                let fallback_url = format!("{}&query={}", base, urlencoding::encode(title));
+                match os_search(&client, &fallback_url, api_key) {
+                    Some(d) if !d.is_empty() => {
+                        log::info!("[subtitle] Query fallback match for {}", video_stem);
+                        d
+                    }
+                    _ => return Err(format!("No subtitles found for \"{}\"", title)),
+                }
             }
         }
     };
@@ -159,23 +173,42 @@ pub fn search_and_download(
             continue;
         }
 
-        let search_url = if media_type == "tv" {
-            let (season, episode) = parse_episode_numbers(video_stem);
-            build_tv_search_url(&base, tmdb_id, title, season, episode)
+        // Strategy 1: Hash-based search (pre-synced to exact release).
+        // Skip when TMDB ID is known — TMDB search is reliable and sync_subtitle
+        // handles timing. Avoids extra API call per episode for full seasons.
+        let hash_data = if tmdb_id.is_some() {
+            None
         } else {
-            build_movie_search_url(&base, tmdb_id, title)
+            hash_search(&client, &base, video, api_key)
         };
 
-        let search_result = os_search(&client, &search_url, api_key);
-        let data = match search_result {
-            Some(d) if !d.is_empty() => d,
-            _ => {
-                let fallback_url = format!("{}&query={}", base, urlencoding::encode(title));
-                match os_search(&client, &fallback_url, api_key) {
-                    Some(d) if !d.is_empty() => d,
-                    _ => {
-                        failed += 1;
-                        continue;
+        // Strategy 2: TMDB/title search (fallback)
+        let data = if let Some(d) = hash_data {
+            d
+        } else {
+            let search_url = if media_type == "tv" {
+                let (season, episode) = parse_episode_numbers(video_stem);
+                build_tv_search_url(&base, tmdb_id, title, season, episode)
+            } else {
+                build_movie_search_url(&base, tmdb_id, title)
+            };
+
+            match os_search(&client, &search_url, api_key) {
+                Some(d) if !d.is_empty() => {
+                    log::info!("[subtitle] TMDB match for {}", video_stem);
+                    d
+                }
+                _ => {
+                    let fallback_url = format!("{}&query={}", base, urlencoding::encode(title));
+                    match os_search(&client, &fallback_url, api_key) {
+                        Some(d) if !d.is_empty() => {
+                            log::info!("[subtitle] Query fallback match for {}", video_stem);
+                            d
+                        }
+                        _ => {
+                            failed += 1;
+                            continue;
+                        }
                     }
                 }
             }
@@ -231,6 +264,29 @@ pub fn search_and_download(
 }
 
 // === Internal helpers ===
+
+/// Hash-based subtitle search — finds subtitles pre-synced to the exact video release.
+/// Returns None if hash computation fails or no results found (callers fall back to TMDB/title).
+fn hash_search(
+    client: &reqwest::blocking::Client,
+    base: &str,
+    video_path: &Path,
+    api_key: &str,
+) -> Option<Vec<OsSubtitle>> {
+    let (hash, file_size) = super::compute_os_hash(video_path)
+        .map_err(|e| log::debug!("[subtitle] Hash computation failed for {}: {}", video_path.display(), e))
+        .ok()?;
+    let stem = video_path.file_stem().and_then(|s| s.to_str()).unwrap_or("");
+    log::info!("[subtitle] Hash search: hash={} size={} for {}", hash, file_size, stem);
+    let hash_url = format!("{}&moviehash={}&moviebytesize={}", base, hash, file_size);
+    let results = os_search(client, &hash_url, api_key)?;
+    if results.is_empty() {
+        log::info!("[subtitle] Hash search returned 0 results for {}", stem);
+        return None;
+    }
+    log::info!("[subtitle] Hash match: {} results for {} (pre-synced to release)", results.len(), stem);
+    Some(results)
+}
 
 #[derive(serde::Deserialize)]
 struct OsSearchResponse {
