@@ -50,13 +50,23 @@ Write-Host "[1/6] Bumping version to $Version..." -ForegroundColor Yellow
 
 $pubspec = Join-Path $ReelRoot "pubspec.yaml"
 $pubspecContent = Get-Content $pubspec -Raw
+$pubspecOriginal = $pubspecContent
 $pubspecContent = $pubspecContent -replace 'version:\s*\d+\.\d+\.\d+\+\d+', "version: $Version+1"
+if ($pubspecContent -eq $pubspecOriginal) {
+    Write-Host "ERROR: Failed to find version pattern in pubspec.yaml" -ForegroundColor Red
+    exit 1
+}
 [System.IO.File]::WriteAllText($pubspec, $pubspecContent)
 
 $iss = Join-Path $ReelRoot "installer.iss"
 $issContent = Get-Content $iss -Raw
+$issOriginal = $issContent
 $issContent = $issContent -replace 'AppVersion=\d+\.\d+\.\d+', "AppVersion=$Version"
 $issContent = $issContent -replace 'OutputBaseFilename=Reel_\d+\.\d+\.\d+_x64-setup', "OutputBaseFilename=Reel_${Version}_x64-setup"
+if ($issContent -eq $issOriginal) {
+    Write-Host "ERROR: Failed to update version in installer.iss" -ForegroundColor Red
+    exit 1
+}
 [System.IO.File]::WriteAllText($iss, $issContent)
 
 Write-Host "  pubspec.yaml: $Version+1" -ForegroundColor Green
@@ -128,14 +138,15 @@ Write-Host "[5/6] Deploying to $UpdatesDir..." -ForegroundColor Yellow
 
 New-Item -ItemType Directory -Force -Path $UpdatesDir | Out-Null
 
-$manifestDest = Join-Path $UpdatesDir "latest.json"
-# Use WriteAllText to avoid UTF-8 BOM (PowerShell 5.1's -Encoding utf8 adds BOM, which breaks JSON parsers)
-[System.IO.File]::WriteAllText($manifestDest, $manifest)
-
+# Deploy installer BEFORE manifest — if a client polls between these two operations,
+# the old manifest still points to the old version (safe). Reverse order would 404.
 Copy-Item -Path $installerPath -Destination (Join-Path $UpdatesDir $installerName) -Force
-
-Write-Host "  latest.json:  deployed" -ForegroundColor Green
 Write-Host "  $installerName deployed" -ForegroundColor Green
+
+$manifestDest = Join-Path $UpdatesDir "latest.json"
+# WriteAllText avoids UTF-8 BOM (PowerShell 5.1's -Encoding utf8 adds BOM, breaks JSON parsers)
+[System.IO.File]::WriteAllText($manifestDest, $manifest)
+Write-Host "  latest.json:  deployed" -ForegroundColor Green
 
 # --- Step 6: Ensure update server is running ---
 Write-Host ""
@@ -143,17 +154,30 @@ Write-Host "[6/6] Checking update server..." -ForegroundColor Yellow
 
 $portInUse = Get-NetTCPConnection -LocalPort $ServerPort -State Listen -ErrorAction SilentlyContinue
 if ($portInUse) {
-    Write-Host "  Update server already running on :$ServerPort" -ForegroundColor Green
-} else {
-    Write-Host "  Starting update server on :$ServerPort..." -ForegroundColor White
-    Start-Process -FilePath "python" -ArgumentList "-m http.server $ServerPort" -WorkingDirectory $UpdatesDir -WindowStyle Hidden
-    Start-Sleep -Seconds 1
-    $check = Get-NetTCPConnection -LocalPort $ServerPort -State Listen -ErrorAction SilentlyContinue
-    if ($check) {
-        Write-Host "  Update server started on :$ServerPort" -ForegroundColor Green
+    $ownerPid = $portInUse[0].OwningProcess
+    $ownerName = (Get-Process -Id $ownerPid -ErrorAction SilentlyContinue).ProcessName
+    if ($ownerName -eq 'python') {
+        Write-Host "  Update server already running on :$ServerPort (PID $ownerPid)" -ForegroundColor Green
     } else {
-        Write-Host "  WARNING: Server may not have started. Run manually:" -ForegroundColor Yellow
+        Write-Host "  WARNING: Port $ServerPort in use by '$ownerName' (PID $ownerPid), not Python" -ForegroundColor Yellow
+        Write-Host "  Kill it and re-run, or start the server manually." -ForegroundColor Yellow
+    }
+} else {
+    $pythonPath = Get-Command python -ErrorAction SilentlyContinue
+    if (-not $pythonPath) {
+        Write-Host "  WARNING: Python not found on PATH. Start the server manually:" -ForegroundColor Yellow
         Write-Host "    cd $UpdatesDir && python -m http.server $ServerPort" -ForegroundColor White
+    } else {
+        Write-Host "  Starting update server on :$ServerPort..." -ForegroundColor White
+        Start-Process -FilePath $pythonPath.Source -ArgumentList "-m http.server $ServerPort --bind 192.168.4.220" -WorkingDirectory $UpdatesDir -WindowStyle Hidden
+        Start-Sleep -Seconds 1
+        $check = Get-NetTCPConnection -LocalPort $ServerPort -State Listen -ErrorAction SilentlyContinue
+        if ($check) {
+            Write-Host "  Update server started on :$ServerPort (LAN only)" -ForegroundColor Green
+        } else {
+            Write-Host "  WARNING: Server may not have started. Run manually:" -ForegroundColor Yellow
+            Write-Host "    cd $UpdatesDir && python -m http.server $ServerPort --bind 192.168.4.220" -ForegroundColor White
+        }
     }
 }
 
