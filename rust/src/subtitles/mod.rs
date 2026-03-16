@@ -4,7 +4,6 @@ pub mod finder;
 pub mod opensubs;
 mod sync;
 
-use once_cell::sync::Lazy;
 use std::path::Path;
 
 // Hash identification and probe metadata live in identify/.
@@ -15,124 +14,61 @@ pub use crate::identify::probe::{probe_file_metadata, EmbeddedSubtitle, ProbeMet
 // Use shared::video::SUBTITLE_EXTENSIONS as single source of truth.
 pub(crate) use crate::shared::video::SUBTITLE_EXTENSIONS;
 
-static LANG_MAP: Lazy<Vec<(&str, &str)>> = Lazy::new(|| {
-    vec![
-        ("english", "eng"),
-        ("eng", "eng"),
-        ("en", "eng"),
-        ("spanish", "spa"),
-        ("spa", "spa"),
-        ("es", "spa"),
-        ("french", "fre"),
-        ("fre", "fre"),
-        ("fra", "fre"),
-        ("fr", "fre"),
-        ("german", "ger"),
-        ("ger", "ger"),
-        ("deu", "ger"),
-        ("de", "ger"),
-        ("japanese", "jpn"),
-        ("jpn", "jpn"),
-        ("ja", "jpn"),
-        ("portuguese", "por"),
-        ("por", "por"),
-        ("pt", "por"),
-        ("italian", "ita"),
-        ("ita", "ita"),
-        ("it", "ita"),
-        ("russian", "rus"),
-        ("rus", "rus"),
-        ("ru", "rus"),
-        ("chinese", "chi"),
-        ("chi", "chi"),
-        ("zh", "chi"),
-        ("korean", "kor"),
-        ("kor", "kor"),
-        ("ko", "kor"),
-        ("arabic", "ara"),
-        ("ara", "ara"),
-        ("ar", "ara"),
-        ("hindi", "hin"),
-        ("hin", "hin"),
-        // NOTE: "hi" omitted — in subtitle filenames, .hi. means "hearing impaired" (SDH),
-        // not Hindi. Use "hin" or "hindi" for Hindi detection.
-        ("dutch", "dut"),
-        ("dut", "dut"),
-        ("nld", "dut"),
-        ("nl", "dut"),
-        ("greek", "gre"),
-        ("gre", "gre"),
-        ("ell", "gre"),
-        ("el", "gre"),
-        ("indonesian", "ind"),
-        ("ind", "ind"),
-        ("id", "ind"),
-        ("persian", "per"),
-        ("per", "per"),
-        ("fas", "per"),
-        ("fa", "per"),
-        ("finnish", "fin"),
-        ("fin", "fin"),
-        ("fi", "fin"),
-        ("swedish", "swe"),
-        ("swe", "swe"),
-        ("sv", "swe"),
-        ("turkish", "tur"),
-        ("tur", "tur"),
-        ("tr", "tur"),
-        ("polish", "pol"),
-        ("pol", "pol"),
-        ("pl", "pol"),
-        ("romanian", "rum"),
-        ("rum", "rum"),
-        ("ron", "rum"),
-        ("ro", "rum"),
-        ("thai", "tha"),
-        ("tha", "tha"),
-        ("th", "tha"),
-        ("vietnamese", "vie"),
-        ("vie", "vie"),
-        ("vi", "vie"),
-        ("czech", "cze"),
-        ("cze", "cze"),
-        ("ces", "cze"),
-        ("cs", "cze"),
-        ("hungarian", "hun"),
-        ("hun", "hun"),
-        ("hu", "hun"),
-        ("norwegian", "nor"),
-        ("nor", "nor"),
-        ("no", "nor"),
-        ("danish", "dan"),
-        ("dan", "dan"),
-        ("da", "dan"),
-        ("hebrew", "heb"),
-        ("heb", "heb"),
-        ("he", "heb"),
-        ("malay", "may"),
-        ("may", "may"),
-        ("msa", "may"),
-        ("ms", "may"),
-        ("ukrainian", "ukr"),
-        ("ukr", "ukr"),
-        ("uk", "ukr"),
-        ("croatian", "hrv"),
-        ("hrv", "hrv"),
-        ("hr", "hrv"),
-        ("bulgarian", "bul"),
-        ("bul", "bul"),
-        ("bg", "bul"),
-    ]
-});
+/// Single source of truth for language data. Used by `normalize_lang`, `detect_language`,
+/// and `to_os_lang` — adding a language here covers all three functions.
+struct Language {
+    /// Recognized forms: full name, ISO 639-2/B, ISO 639-2/T, ISO 639-1.
+    /// NOTE: "hi" excluded from Hindi — .hi. in subtitle filenames means SDH, not Hindi.
+    aliases: &'static [&'static str],
+    /// ISO 639-2/B (3-letter, used for normalization and detection)
+    code_3: &'static str,
+    /// ISO 639-1 (2-letter, used for OpenSubtitles API)
+    code_2: &'static str,
+}
+
+static LANGUAGES: &[Language] = &[
+    Language { aliases: &["english", "eng", "en"],          code_3: "eng", code_2: "en" },
+    Language { aliases: &["spanish", "spa", "es"],          code_3: "spa", code_2: "es" },
+    Language { aliases: &["french", "fre", "fra", "fr"],    code_3: "fre", code_2: "fr" },
+    Language { aliases: &["german", "ger", "deu", "de"],    code_3: "ger", code_2: "de" },
+    Language { aliases: &["japanese", "jpn", "ja"],          code_3: "jpn", code_2: "ja" },
+    Language { aliases: &["portuguese", "por", "pt"],        code_3: "por", code_2: "pt" },
+    Language { aliases: &["italian", "ita", "it"],           code_3: "ita", code_2: "it" },
+    Language { aliases: &["russian", "rus", "ru"],           code_3: "rus", code_2: "ru" },
+    Language { aliases: &["chinese", "chi", "zh"],           code_3: "chi", code_2: "zh" },
+    Language { aliases: &["korean", "kor", "ko"],            code_3: "kor", code_2: "ko" },
+    Language { aliases: &["arabic", "ara", "ar"],            code_3: "ara", code_2: "ar" },
+    Language { aliases: &["hindi", "hin"],                   code_3: "hin", code_2: "hi" },
+    Language { aliases: &["dutch", "dut", "nld", "nl"],      code_3: "dut", code_2: "nl" },
+    Language { aliases: &["greek", "gre", "ell", "el"],      code_3: "gre", code_2: "el" },
+    Language { aliases: &["indonesian", "ind", "id"],        code_3: "ind", code_2: "id" },
+    Language { aliases: &["persian", "per", "fas", "fa"],    code_3: "per", code_2: "fa" },
+    Language { aliases: &["finnish", "fin", "fi"],            code_3: "fin", code_2: "fi" },
+    Language { aliases: &["swedish", "swe", "sv"],            code_3: "swe", code_2: "sv" },
+    Language { aliases: &["turkish", "tur", "tr"],            code_3: "tur", code_2: "tr" },
+    Language { aliases: &["polish", "pol", "pl"],             code_3: "pol", code_2: "pl" },
+    Language { aliases: &["romanian", "rum", "ron", "ro"],    code_3: "rum", code_2: "ro" },
+    Language { aliases: &["thai", "tha", "th"],               code_3: "tha", code_2: "th" },
+    Language { aliases: &["vietnamese", "vie", "vi"],          code_3: "vie", code_2: "vi" },
+    Language { aliases: &["czech", "cze", "ces", "cs"],       code_3: "cze", code_2: "cs" },
+    Language { aliases: &["hungarian", "hun", "hu"],           code_3: "hun", code_2: "hu" },
+    Language { aliases: &["norwegian", "nor", "no"],           code_3: "nor", code_2: "no" },
+    Language { aliases: &["danish", "dan", "da"],              code_3: "dan", code_2: "da" },
+    Language { aliases: &["hebrew", "heb", "he"],              code_3: "heb", code_2: "he" },
+    Language { aliases: &["malay", "may", "msa", "ms"],       code_3: "may", code_2: "ms" },
+    Language { aliases: &["ukrainian", "ukr", "uk"],           code_3: "ukr", code_2: "uk" },
+    Language { aliases: &["croatian", "hrv", "hr"],            code_3: "hrv", code_2: "hr" },
+    Language { aliases: &["bulgarian", "bul", "bg"],           code_3: "bul", code_2: "bg" },
+];
 
 /// Normalize a language code to ISO 639-2/B. Handles ISO 639-2/T variants
 /// (e.g. "fra"→"fre", "deu"→"ger") and ISO 639-1 codes (e.g. "en"→"eng").
 /// Returns the input unchanged if no mapping is found.
 pub fn normalize_lang(code: &str) -> String {
     let lower = code.to_lowercase();
-    for (pattern, normalized) in LANG_MAP.iter() {
-        if lower == *pattern {
-            return normalized.to_string();
+    for lang in LANGUAGES {
+        if lang.aliases.contains(&lower.as_str()) {
+            return lang.code_3.to_string();
         }
     }
     lower
@@ -151,9 +87,9 @@ pub fn detect_language(path: &str) -> String {
         .collect();
 
     for part in &parts {
-        for (pattern, code) in LANG_MAP.iter() {
-            if *part == *pattern {
-                return code.to_string();
+        for lang in LANGUAGES {
+            if lang.aliases.contains(part) {
+                return lang.code_3.to_string();
             }
         }
     }
@@ -168,9 +104,9 @@ pub fn detect_language(path: &str) -> String {
         .collect();
 
     for parent in &parent_names {
-        for (pattern, code) in LANG_MAP.iter() {
-            if parent == *pattern {
-                return code.to_string();
+        for lang in LANGUAGES {
+            if lang.aliases.contains(&parent.as_str()) {
+                return lang.code_3.to_string();
             }
         }
     }
@@ -190,23 +126,15 @@ pub fn is_sdh(path: &str) -> bool {
 }
 
 /// Convert any language code/name to 2-letter ISO 639-1 for OpenSubtitles API.
+/// Unknown codes pass through unchanged (already 2-letter, or unrecognized).
 pub(crate) fn to_os_lang(lang: &str) -> String {
-    match lang.to_lowercase().as_str() {
-        "eng" | "english" | "en" => "en",
-        "spa" | "spanish" | "es" => "es",
-        "fre" | "fra" | "french" | "fr" => "fr",
-        "ger" | "deu" | "german" | "de" => "de",
-        "jpn" | "japanese" | "ja" => "ja",
-        "por" | "portuguese" | "pt" => "pt",
-        "ita" | "italian" | "it" => "it",
-        "rus" | "russian" | "ru" => "ru",
-        "chi" | "chinese" | "zh" => "zh",
-        "kor" | "korean" | "ko" => "ko",
-        "ara" | "arabic" | "ar" => "ar",
-        "hin" | "hindi" | "hi" => "hi",
-        other => return other.to_string(),
+    let lower = lang.to_lowercase();
+    for l in LANGUAGES {
+        if l.aliases.contains(&lower.as_str()) {
+            return l.code_2.to_string();
+        }
     }
-    .to_string()
+    lower
 }
 
 /// Get path to the bundled ffmpeg binary in the app's config directory.

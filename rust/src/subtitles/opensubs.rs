@@ -169,21 +169,16 @@ pub fn search_and_download(
         let video_dir = video.parent().unwrap_or(title_dir);
 
         // If subtitle already exists, sync it instead of re-downloading
-        if has_existing_subtitle(video_dir, video_stem) {
-            let existing = find_first_subtitle(video_dir, video_stem);
-            if let Some(sub_path) = existing {
-                match super::sync::sync_subtitle(video, &sub_path) {
-                    Ok(()) => {
-                        log::info!("[subtitle] Synced existing sub: {}", sub_path.display());
-                        synced += 1;
-                    }
-                    Err(e) => {
-                        log::warn!("[subtitle] Sync failed for {}: {}", sub_path.display(), e);
-                        synced += 1; // still count as processed, not failed
-                    }
+        if let Some(sub_path) = find_first_subtitle(video_dir, video_stem) {
+            match super::sync::sync_subtitle(video, &sub_path) {
+                Ok(()) => {
+                    log::info!("[subtitle] Synced existing sub: {}", sub_path.display());
+                    synced += 1;
                 }
-            } else {
-                synced += 1;
+                Err(e) => {
+                    log::warn!("[subtitle] Sync failed for {}: {}", sub_path.display(), e);
+                    failed += 1;
+                }
             }
             continue;
         }
@@ -246,16 +241,21 @@ pub fn search_and_download(
                 let lang = &best.attributes.language;
                 let ext = filename.rsplit('.').next().unwrap_or("srt");
                 let sub_path = video_dir.join(format!("{}.{}.{}", video_stem, lang, ext));
-                if std::fs::write(&sub_path, &bytes).is_ok() {
-                    if let Err(e) = super::sync::sync_subtitle(video, &sub_path) {
-                        log::warn!("[subtitle] Sync failed for {}: {}", sub_path.display(), e);
+                match std::fs::write(&sub_path, &bytes) {
+                    Ok(()) => {
+                        if let Err(e) = super::sync::sync_subtitle(video, &sub_path) {
+                            log::warn!("[subtitle] Sync failed for {}: {}", sub_path.display(), e);
+                        }
+                        downloaded += 1;
                     }
-                    downloaded += 1;
-                } else {
-                    failed += 1;
+                    Err(e) => {
+                        log::warn!("[subtitle] Failed to write {}: {}", sub_path.display(), e);
+                        failed += 1;
+                    }
                 }
             }
-            Err(_) => {
+            Err(e) => {
+                log::warn!("[subtitle] Download failed for {}: {}", video_stem, e);
                 failed += 1;
             }
         }
@@ -339,7 +339,7 @@ fn find_all_videos_in_dir(dir: &Path) -> Vec<std::path::PathBuf> {
         .filter_map(|e| e.ok())
     {
         let path = entry.path();
-        if path.is_file() && crate::renamer::is_video_file(path) {
+        if path.is_file() && crate::shared::video::is_video_file(path) {
             videos.push(path.to_path_buf());
         }
     }
@@ -370,28 +370,6 @@ fn find_first_subtitle(dir: &Path, video_stem: &str) -> Option<std::path::PathBu
         }
     }
     None
-}
-
-fn has_existing_subtitle(dir: &Path, video_stem: &str) -> bool {
-    for ext in super::SUBTITLE_EXTENSIONS {
-        if dir.join(format!("{}.{}", video_stem, ext)).exists() {
-            return true;
-        }
-    }
-    let prefix = format!("{}.", video_stem);
-    if let Ok(entries) = std::fs::read_dir(dir) {
-        for entry in entries.flatten() {
-            let name = entry.file_name().to_string_lossy().to_string();
-            if name.starts_with(&prefix) {
-                for ext in super::SUBTITLE_EXTENSIONS {
-                    if name.ends_with(&format!(".{}", ext)) {
-                        return true;
-                    }
-                }
-            }
-        }
-    }
-    false
 }
 
 fn parse_episode_numbers(stem: &str) -> (Option<u32>, Option<u32>) {

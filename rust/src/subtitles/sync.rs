@@ -102,7 +102,7 @@ pub(crate) fn sync_subtitle(video_path: &Path, srt_path: &Path) -> Result<(), St
         .unwrap_or("?");
     log::info!("[sync] Starting subtitle sync for {}", video_name);
 
-    let temp_wav = srt_path.with_extension("_sync_tmp.wav");
+    let temp_wav = video_path.with_extension("_sync_tmp.wav");
 
     // Extract first 10 minutes of audio as 16kHz mono PCM
     if let Err(e) = extract_audio_wav(video_path, &temp_wav, ANALYSIS_DURATION_SECS) {
@@ -460,6 +460,17 @@ fn detect_and_fix_framerate(
         _ => return Ok(sub_segments),
     };
 
+    // Guard: subs must cover at least 80% of video for reliable ratio detection.
+    // Short subs (e.g. credits-only) produce ratios that accidentally match framerate conversions.
+    if (last_sub_end as f64) < 0.80 * (video_duration_ms as f64) {
+        log::debug!(
+            "[sync] Subs cover only {:.0}% of video — skipping framerate detection for {}",
+            (last_sub_end as f64 / video_duration_ms as f64) * 100.0,
+            video_name
+        );
+        return Ok(sub_segments);
+    }
+
     // Compare ratio of last sub timestamp to video duration
     let ratio = last_sub_end as f64 / video_duration_ms as f64;
 
@@ -539,7 +550,7 @@ fn find_best_offset(audio: &[(i64, i64)], subs: &[(i64, i64)]) -> (i64, i64, i64
     for &(start, end) in audio {
         let s = (start / RESOLUTION_MS).max(0) as usize;
         let e = (end / RESOLUTION_MS).min(bins as i64) as usize;
-        for i in s..e.min(bins) {
+        for i in s..e {
             audio_timeline[i] = true;
         }
     }
@@ -548,7 +559,7 @@ fn find_best_offset(audio: &[(i64, i64)], subs: &[(i64, i64)]) -> (i64, i64, i64
     for &(start, end) in subs {
         let s = (start / RESOLUTION_MS).max(0) as usize;
         let e = (end / RESOLUTION_MS).min(bins as i64) as usize;
-        for i in s..e.min(bins) {
+        for i in s..e {
             sub_timeline[i] = true;
         }
     }
