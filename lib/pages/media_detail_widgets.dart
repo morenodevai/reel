@@ -170,7 +170,7 @@ class HeroSection extends StatelessWidget {
                     ),
                     DetailActionButton(
                       icon: Icons.subtitles_outlined,
-                      label: downloadingSubs ? 'Downloading...' : 'Get Subtitles',
+                      label: downloadingSubs ? 'Syncing...' : 'Sync Subtitles',
                       onTap: downloadingSubs ? null : onDownloadSubs,
                     ),
                     if (onEdit != null)

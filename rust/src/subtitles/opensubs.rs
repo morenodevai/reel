@@ -158,7 +158,7 @@ pub fn search_and_download(
     );
 
     let mut downloaded = 0u32;
-    let mut skipped = 0u32;
+    let mut synced = 0u32;
     let mut failed = 0u32;
 
     for video in &videos {
@@ -168,8 +168,23 @@ pub fn search_and_download(
             .unwrap_or("");
         let video_dir = video.parent().unwrap_or(title_dir);
 
+        // If subtitle already exists, sync it instead of re-downloading
         if has_existing_subtitle(video_dir, video_stem) {
-            skipped += 1;
+            let existing = find_first_subtitle(video_dir, video_stem);
+            if let Some(sub_path) = existing {
+                match super::sync::sync_subtitle(video, &sub_path) {
+                    Ok(()) => {
+                        log::info!("[subtitle] Synced existing sub: {}", sub_path.display());
+                        synced += 1;
+                    }
+                    Err(e) => {
+                        log::warn!("[subtitle] Sync failed for {}: {}", sub_path.display(), e);
+                        synced += 1; // still count as processed, not failed
+                    }
+                }
+            } else {
+                synced += 1;
+            }
             continue;
         }
 
@@ -246,7 +261,7 @@ pub fn search_and_download(
         }
     }
 
-    if downloaded == 0 && skipped == 0 {
+    if downloaded == 0 && synced == 0 {
         return Err(format!("No subtitles found for \"{}\"", title));
     }
 
@@ -254,8 +269,8 @@ pub fn search_and_download(
     if downloaded > 0 {
         parts.push(format!("{} downloaded", downloaded));
     }
-    if skipped > 0 {
-        parts.push(format!("{} already had subtitles", skipped));
+    if synced > 0 {
+        parts.push(format!("{} synced", synced));
     }
     if failed > 0 {
         parts.push(format!("{} failed", failed));
@@ -329,6 +344,32 @@ fn find_all_videos_in_dir(dir: &Path) -> Vec<std::path::PathBuf> {
         }
     }
     videos
+}
+
+/// Find the first existing subtitle file for a video (for re-syncing).
+fn find_first_subtitle(dir: &Path, video_stem: &str) -> Option<std::path::PathBuf> {
+    // Check direct stem.ext matches first
+    for ext in super::SUBTITLE_EXTENSIONS {
+        let path = dir.join(format!("{}.{}", video_stem, ext));
+        if path.exists() {
+            return Some(path);
+        }
+    }
+    // Check stem.lang.ext pattern
+    let prefix = format!("{}.", video_stem);
+    if let Ok(entries) = std::fs::read_dir(dir) {
+        for entry in entries.flatten() {
+            let name = entry.file_name().to_string_lossy().to_string();
+            if name.starts_with(&prefix) {
+                for ext in super::SUBTITLE_EXTENSIONS {
+                    if name.ends_with(&format!(".{}", ext)) {
+                        return Some(entry.path());
+                    }
+                }
+            }
+        }
+    }
+    None
 }
 
 fn has_existing_subtitle(dir: &Path, video_stem: &str) -> bool {

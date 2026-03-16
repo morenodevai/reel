@@ -76,7 +76,7 @@ static FFMPEG_AVAILABLE: Lazy<bool> = Lazy::new(|| {
 
 /// Auto-sync subtitle timing to the video audio.
 /// Only processes .srt files — other formats are skipped gracefully.
-pub(super) fn sync_subtitle(video_path: &Path, srt_path: &Path) -> Result<(), String> {
+pub(crate) fn sync_subtitle(video_path: &Path, srt_path: &Path) -> Result<(), String> {
     // Only sync .srt files — .ass/.sub have different timing formats
     let ext = srt_path
         .extension()
